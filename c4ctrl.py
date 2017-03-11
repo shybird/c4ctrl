@@ -3,7 +3,6 @@
 # c4ctrl: Command line client for AutoC4
 
 import sys
-sys.path.append("/home/shy/build/paho.mqtt.python/src")
 
 class C4Interface():
     """Interaction with the C4 home automation system."""
