@@ -31,8 +31,9 @@ class C4Interface():
                     item["qos"] = self.qos
                     item["retain"] = self.retain
 
-            if self.debug: return print("[DEBUG] inhibited message:", cmd)
+            if self.debug: return print("[DEBUG] inhibited messages:", cmd)
 
+            print(cmd)
             publish.multiple(cmd,
                     hostname=self.broker,
                     port=self.port)
@@ -68,6 +69,13 @@ class C4Interface():
     def status(self):
         """Print current status (open or closed) of C4."""
         st = self.fetch("club/status")
+
+        # Produce fake result to prevent errors if in debug mode
+        if C4Interface.debug:
+            print("[DEBUG] Warning: handing over fake data to allow further execution!")
+            class st: pass
+            st.payload = b'\x00'
+
         if st.payload == b'\x01':
             print("Club is open")
         else:
@@ -163,7 +171,6 @@ class C4Room:
 
     def interactive_switchctrl(self, userinput="NULL"):
         """Switch lamps in this rooms on and off."""
-        import sys
         c4 = C4Interface()
 
         if userinput == "NULL":
@@ -318,7 +325,7 @@ class Kitchenlight:
     """The Kitchenlight."""
 
     _available_modes = """
-  off                   disable
+  off                   turn off
   checker[,DELAY[,COLOR_1[,COLOR_2]]]
                         Checker
   matrix[,LINES]        Matrix
@@ -676,8 +683,7 @@ class ColorScheme:
         print("Available presets:")
         for entry in self.available:
             if entry[0] == '.' or entry[-1:] == '~': continue
-            print(entry)
-        print("PRESET may also be a color in hex notation (eg. #f06 or #ff0066).")
+            print("  " + entry)
 
     def store(self, name):
         """Store the current state of all lights as preset."""
@@ -727,8 +733,165 @@ class ColorScheme:
         print("Wrote preset \"{}\"".format(name))
 
 
+class RemotePresets:
+    """Remote preset control."""
+
+    def __init__(self):
+        self.map = {
+            "global" : {
+                "name" : "AutoC4",
+                "list_topic" : "preset/list",
+                "set_topic" : "preset/set",
+                "def_topic" : "preset/def"
+                },
+            "wohnzimmer" : {
+                "name" : "Wohnzimmer",
+                "list_topic" : "preset/wohnzimmer/list",
+                "set_topic" : "preset/wohnzimmer/set",
+                "def_topic" : "preset/wohnzimmer/def"
+                },
+            "plenar" : {
+                "name" : "Plenarsaal",
+                "list_topic" : "preset/plenar/list",
+                "set_topic" : "preset/plenar/set",
+                "def_topic" : "preset/plenar/def"
+                },
+            "fnord" : {
+                "name" : "Fnordcenter",
+                "list_topic" : "preset/fnord/list",
+                "set_topic" : "preset/fnord/set",
+                "def_topic" : "preset/fnord/def"
+                },
+            "keller" : {
+                "name" : "Keller",
+                "list_topic" : "preset/keller/list",
+                "set_topic" : "preset/keller/set",
+                "def_topic" : "preset/keller/def"
+                }
+            }
+
+    def _expand_room_name(self, name):
+        """Try to expand partial names."""
+        if name in self.map.keys():
+            # Return exact match
+            return name
+
+        for room in self.map.keys():
+            if room.find(name) == 0:
+                return room
+        # Fallback
+        return name
+
+    def _expand_preset_name(self, name, rooms, available):
+        """Try to expand partial preset names.
+        
+        <rooms> must be a list of rooms to consider.
+        <available> must be a dict as returned by query_available()."""
+        # We need to take care to match only presets which are available for
+        # every room
+        matchtable = {}
+        for room in rooms:
+            for preset in available[room]:
+                # Candidate? 
+                if preset == name or preset.find(name) == 0:
+                    if preset in matchtable.keys():
+                        matchtable[preset] += 1
+                    else:
+                        matchtable[preset] = 1
+
+        # First check if there is an exact match
+        if name in matchtable.keys() and matchtable[name] == len(rooms):
+            return name # Exact match
+
+        # Return first preset available in all rooms
+        for match in matchtable.keys():
+            if matchtable[match] == len(rooms):
+                return match
+        # Fallback
+        return name
+
+    def query_available(self, rooms=["global"]):
+        """Returns a dict of remotely available presets for [rooms]."""
+        import json
+
+        # "global" is available everywhere and should always be included
+        if "global" not in rooms:
+            rooms.append("global")
+
+        req = []
+        for room in rooms:
+            if room not in self.map.keys():
+                print("Error: unknown room \"{}\"".format(room))
+                return {}
+
+            req.append(self.map[room]["list_topic"])
+
+        c4 = C4Interface()
+        responce = c4.fetch(req)
+        # Make responce iterable
+        if type(responce) != list: responce = [responce]
+
+        available = {}
+        for room in rooms:
+            for r in responce:
+                if r.topic == self.map[room]["list_topic"]:
+                    available[room] = json.decoder.JSONDecoder().decode(r.payload.decode())
+
+        return available
+
+    def list_available(self, room="global"):
+        """Print a list of available Presets."""
+        room = self._expand_room_name(room)
+        if room == "global":
+            rooms = [room]
+        else: # "global" is available in every room, thus append
+            rooms = ["global", room]
+        available = self.query_available(rooms.copy())
+
+        if not available:
+            print("No presets available for {}".format(self.map[room]["name"]))
+        else:
+            print("Available presets for {}:".format(self.map[room]["name"]))
+            for r in available.keys():
+                for preset in available[r]:
+                    print( "  " + preset)
+
+    def apply_preset(self, preset, rooms=["global"]):
+        """Apply preset to given rooms."""
+        # Strip spaces and expand rooms names
+        for i in range(len(rooms)):
+            rooms[i] = self._expand_room_name(rooms[i].strip())
+
+        available = self.query_available(rooms.copy())
+        # Produce some fake data to prevent KeyErrors if in debug mode
+        if C4Interface.debug:
+            print("[DEBUG] Warning: handing over fake data to allow further execution!")
+            available = {
+                "global" : [preset],
+                "wohnzimmer" : [preset],
+                "plenar" : [preset],
+                "fnord" : [preset],
+                "keller" : [preset]
+            }
+        # Expand preset name (stripping spaces)
+        preset = self._expand_preset_name(preset, rooms.copy(), available.copy())
+
+        for room in rooms:
+            if preset not in available[room] and preset not in available["global"]:
+                print("Error: preset \"{}\" not available for room \"{}\"!".format(
+                        preset, self.map[room]["name"]))
+                return False
+
+        cmd = []
+        for room in rooms:
+            cmd.append({"topic" : self.map[room]["set_topic"],
+                    "payload" : preset})
+
+        c4 = C4Interface()
+        return c4.update(cmd)
+
+
 if __name__ == "__main__":
-    import sys
     import argparse
 
     parser = argparse.ArgumentParser(
@@ -753,28 +916,38 @@ if __name__ == "__main__":
         "-k", "--kl-mode", type=str, metavar="MODE[,OPTIONS]",
         help="set Kitchenlight to MODE")
     group_kl.add_argument(
-        "-l", "--kl-list", action="store_true",
-        help="list available Kitchenlight modes")
+        "-i", "--list-kl-modes", action="store_true",
+        help="list available Kitchenlight modes and their options")
     # Ambient control
-    group_cl = parser.add_argument_group(title="ambient color control")
+    group_cl = parser.add_argument_group(title="ambient color control",
+            description="PRESET may be either a preset name or a color value in hex notation (eg. \"#ff0066\").")
     group_cl.add_argument(
         "-w", "--wohnzimmer", type=str, dest="w_color", metavar="PRESET",
-        help="apply colorscheme PRESET to Wohnzimmer")
+        help="apply local colorscheme PRESET to Wohnzimmer")
     group_cl.add_argument(
         "-p", "--plenarsaal", type=str, dest="p_color", metavar="PRESET",
-        help="apply colorscheme PRESET to Plenarsaal")
+        help="apply local colorscheme PRESET to Plenarsaal")
     group_cl.add_argument(
         "-f", "--fnordcenter", type=str, dest="f_color", metavar="PRESET",
-        help="apply colorscheme PRESET to Fnordcenter")
+        help="apply local colorscheme PRESET to Fnordcenter")
     group_cl.add_argument(
-        "-i", "--list-presets", action="store_true",
-        help="list available presets")
+        "-l", "--list-presets", action="store_true",
+        help="list locally available presets")
     group_cl.add_argument(
         "-o", "--store-preset", type=str, dest="store_as", metavar="NAME",
         help="store current state as preset NAME")
+    # Remote presets
+    group_rp = parser.add_argument_group(title="remote preset functions",
+            description="Available room names are \"wohnzimmer\", \"plenar\", \"fnord\" and \"keller\". Preset and room names can be abbreviated.")
+    group_rp.add_argument(
+        "-r", "--remote-preset", type=str, metavar="PRESET[:ROOM[,ROOM,...]]",
+        help="activate remote PRESET for ROOM.")
+    group_rp.add_argument(
+        "-R", "--list-remote", nargs='?', const="global", metavar="ROOM",
+        help="list remote presets for room ROOM")
     # Switch control
     group_sw = parser.add_argument_group(title="light switch control",
-        description="The optional [DIGIT_CODE] is a string of 0s or 1s for every light in the room. Works interactivly if missing.")
+        description="The optional DIGIT_CODE is a string of 0s or 1s for every light in the room. Works interactivly if missing.")
     group_sw.add_argument(
         "-W", nargs='?', dest="w_switch", const="NULL", metavar="DIGIT_CODE",
         help="switch lights in Wohnzimmer on/off")
@@ -803,7 +976,7 @@ if __name__ == "__main__":
             C4Interface().shutdown()
 
     # Kitchenlight
-    if args.kl_list:
+    if args.list_kl_modes:
         print("Available Kitchenlight modes (options are optional):")
         print(Kitchenlight._available_modes)
     if args.kl_mode:
@@ -828,6 +1001,19 @@ if __name__ == "__main__":
         if preset: Fnordcenter().set_colorscheme(preset)
     if args.list_presets:
         ColorScheme().list_available()
+
+    # Remote presets
+    if args.list_remote:
+        RemotePresets().list_available(args.list_remote.lower())
+    if args.remote_preset:
+        # Lets try to preserve spaces
+        #remote_opts = ' '.join(args.remote_preset).split(':')
+        remote_opts = args.remote_preset.split(':')
+        if len(remote_opts) == 1:
+            RemotePresets().apply_preset(remote_opts[0].lower().strip())
+        else:
+            RemotePresets().apply_preset(remote_opts[0].lower().strip(),
+                    remote_opts[1].split(','))
 
     # Light switches
     if args.w_switch:
