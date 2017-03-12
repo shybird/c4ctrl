@@ -30,7 +30,14 @@ class C4Interface():
                 if type(item) == dict:
                     item["qos"] = self.qos
                     item["retain"] = self.retain
-
+                elif type(item) == tuple:
+                    item = (
+                        item[0] or self.topic, # topic
+                        item[1], # payload
+                        self.qos, # qos
+                        self.retain # retain
+                        )
+                        
             if self.debug: return print("[DEBUG] inhibited messages:", cmd)
 
             print(cmd)
