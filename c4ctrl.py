@@ -51,7 +51,7 @@ class C4Interface():
                     port=self.port)
 
     def fetch(self, topic=[]):
-        """Return curent state of topic."""
+        """Return current state of topic."""
         from paho.mqtt import subscribe
         if self.debug:
             print("[DEBUG] inhibited query for:", topic)
