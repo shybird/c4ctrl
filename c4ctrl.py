@@ -26,17 +26,19 @@ class C4Interface():
 
         if type(cmd) == list:
             # Add <qos> and <retain> to every message
-            for item in cmd:
+            for item in cmd.copy():
                 if type(item) == dict:
                     item["qos"] = self.qos
                     item["retain"] = self.retain
                 elif type(item) == tuple:
-                    item = (
+                    new_item = (
                         item[0] or self.topic, # topic
                         item[1], # payload
                         self.qos, # qos
                         self.retain # retain
                         )
+                    cmd.remove(item)
+                    cmd.append(new_item)
                         
             if self.debug: return print("[DEBUG] inhibited messages:", cmd)
 
@@ -139,6 +141,7 @@ class Dmx:
 
     def set_color(self, color):
         """Set color (hex) for this instance.
+
         The color is then available via the color variable."""
 
         if not color:
@@ -147,12 +150,6 @@ class Dmx:
         color = self._pad_color(color, "000000")
         self.color = color
         self.payload = bytearray.fromhex(color)
-
-    def color_from_array(self, ba):
-        """Set color (bytearray) for thes instance.
-
-        The color is then available via the color variable."""
-        self.set_color(ba.hex())
 
 
 class Dmx5(Dmx):
@@ -225,7 +222,7 @@ class C4Room:
     def set_colorscheme(self, colorscheme):
         """Apply colorscheme to the LED Cans in this room."""
         cmd = []
-        # Todo: this stuff would make sense when the Sink Light would be slave
+        # Todo: this stuff would make sense if the Sink Light would be slave
         # to a master
         #if colorscheme.single_color:
         #    # Setting only master is more efficient here
@@ -718,7 +715,6 @@ class ColorScheme:
 
         fd.write("# Preset \"{}\" (auto generated)\n".format(name))
         fd.write("# Note: \"/master\" topics override every other topic in the room.\n")
-        fd.write("# Thus, they have been commented out.\n")
         for room in Wohnzimmer, Plenarsaal, Fnordcenter: 
             topics = []
             for light in room.lights:
@@ -729,7 +725,7 @@ class ColorScheme:
             for light in room.lights:
                 for r in responce:
                     if r.topic == light.topic:
-                        light.color_from_array(r.payload)
+                        light.set_color(r.payload.hex())
                         # Out comment master, as it would overre everything else
                         if self._topic_is_master(r.topic):
                             fd.write("#{} = {}\n".format(light.topic, light.color))
@@ -780,7 +776,7 @@ class RemotePresets:
     def _expand_room_name(self, name):
         """Try to expand partial names."""
         if name in self.map.keys():
-            # Return exact match
+            # Return on exact match
             return name
 
         for room in self.map.keys():
@@ -808,8 +804,7 @@ class RemotePresets:
 
         # First check if there is an exact match
         if name in matchtable.keys() and matchtable[name] == len(rooms):
-            return name # Exact match
-
+            return name
         # Return first preset available in all rooms
         for match in matchtable.keys():
             if matchtable[match] == len(rooms):
@@ -821,7 +816,7 @@ class RemotePresets:
         """Returns a dict of remotely available presets for [rooms]."""
         import json
 
-        # "global" is available everywhere and should always be included
+        # Presets in "global" are available everywhere and should always be included
         if "global" not in rooms:
             rooms.append("global")
 
@@ -849,11 +844,7 @@ class RemotePresets:
     def list_available(self, room="global"):
         """Print a list of available Presets."""
         room = self._expand_room_name(room)
-        if room == "global":
-            rooms = [room]
-        else: # "global" is available in every room, thus append
-            rooms = ["global", room]
-        available = self.query_available(rooms.copy())
+        available = self.query_available([room])
 
         if not available:
             print("No presets available for {}".format(self.map[room]["name"]))
@@ -891,8 +882,7 @@ class RemotePresets:
 
         cmd = []
         for room in rooms:
-            cmd.append({"topic" : self.map[room]["set_topic"],
-                    "payload" : preset})
+            cmd.append((self.map[room]["set_topic"], preset))
 
         c4 = C4Interface()
         return c4.update(cmd)
@@ -1017,10 +1007,10 @@ if __name__ == "__main__":
         #remote_opts = ' '.join(args.remote_preset).split(':')
         remote_opts = args.remote_preset.split(':')
         if len(remote_opts) == 1:
-            RemotePresets().apply_preset(remote_opts[0].lower().strip())
+            RemotePresets().apply_preset(remote_opts[0].strip())
         else:
-            RemotePresets().apply_preset(remote_opts[0].lower().strip(),
-                    remote_opts[1].split(','))
+            RemotePresets().apply_preset(remote_opts[0].strip(),
+                    remote_opts[1].lower().split(','))
 
     # Light switches
     if args.w_switch:
