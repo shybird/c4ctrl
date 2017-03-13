@@ -114,7 +114,7 @@ class Dmx:
         self.set_color(color or self.template)
 
     def __repr__(self):
-        return "<dmx '{}'>".format(self.topic)
+        return "<Dmx '{}: {}'>".format(self.topic, self.color)
 
     def _pad_color(self, color):
         """Merge hex color value into hex template."""
@@ -149,16 +149,20 @@ class Dmx:
         self.payload = bytearray.fromhex(color)
 
 
-class Dmx5(Dmx):
-    """Abstraction of the 5 Channel LED Cans in the Club."""
+class Dmx4(Dmx):
+    """Abstraction of the 4 Channel LED Cans in the Club."""
 
-    template = "00000000ff"
+    template = "000000ff"
+    def __repr__(self):
+        return "<Dmx4 '{}: {}'>".format(self.topic, self.color)
 
 
 class Dmx7(Dmx):
     """Abstraction of the 7 Channel LED Cans in the Club."""
 
     template = "000000000000ff"
+    def __repr__(self):
+        return "<Dmx7 '{}: {}'>".format(self.topic, self.color)
 
 
 class C4Room:
@@ -293,13 +297,13 @@ class Fnordcenter(C4Room):
             ("Links (Fairydust)", "licht/fnord/links"),
             ("Rechts (SCUMM)", "licht/fnord/rechts")
         ]
-    master = Dmx5("dmx/fnord/master")
+    master = Dmx4("dmx/fnord/master")
     lights = [
-            Dmx5("dmx/fnord/master"),
-            Dmx5("dmx/fnord/scummfenster"),
-            Dmx5("dmx/fnord/schranklinks"),
-            Dmx5("dmx/fnord/fairyfenster"),
-            Dmx5("dmx/fnord/schrankrechts")
+            Dmx4("dmx/fnord/master"),
+            Dmx4("dmx/fnord/scummfenster"),
+            Dmx4("dmx/fnord/schranklinks"),
+            Dmx4("dmx/fnord/fairyfenster"),
+            Dmx4("dmx/fnord/schrankrechts")
         ]
 
 
