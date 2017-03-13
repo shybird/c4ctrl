@@ -822,7 +822,7 @@ class RemotePresets:
 
         # Presets in "global" are available everywhere and should always be included
         if "global" not in rooms:
-            rooms.append("global")
+            rooms.insert(0, "global")
 
         req = []
         for room in rooms:
@@ -921,7 +921,7 @@ if __name__ == "__main__":
         help="list available Kitchenlight modes and their options")
     # Ambient control
     group_cl = parser.add_argument_group(title="ambient color control",
-            description="PRESET may be either a preset name or a color value in hex notation (eg. \"#ff0066\").")
+        description="PRESET may be either a preset name or a color value in hex notation (eg. \"#ff0066\").")
     group_cl.add_argument(
         "-w", "--wohnzimmer", type=str, dest="w_color", metavar="PRESET",
         help="apply local colorscheme PRESET to Wohnzimmer")
@@ -939,7 +939,7 @@ if __name__ == "__main__":
         help="store current state as preset NAME")
     # Remote presets
     group_rp = parser.add_argument_group(title="remote preset functions",
-            description="Available room names are \"wohnzimmer\", \"plenar\", \"fnord\" and \"keller\". Preset and room names can be abbreviated.")
+        description="Available room names are \"wohnzimmer\", \"plenar\", \"fnord\" and \"keller\". Preset and room names can be abbreviated.")
     group_rp.add_argument(
         "-r", "--remote-preset", type=str, metavar="PRESET[:ROOM[,ROOM,...]]",
         help="activate remote PRESET for ROOM.")
