@@ -378,9 +378,6 @@ class Kitchenlight:
             return self.pacman()
         if mode == "sine":
             return self.sine()
-        # Evil strobo harms the Kitchenlight
-        #if mode == "strobo":
-        #    return self.strobo()
         if mode == "text":
             return self.text(*opts)
         if mode == "flood":
@@ -492,8 +489,6 @@ class Kitchenlight:
         v[0:4] = int(8).to_bytes(4, "little")
         v[4:8] = int(delay).to_bytes(4, "little")
         v[8:8 + len(text)] = text
-        #for i in range(len(text)):
-        #    v[i+8:i+9] = int(text[i]).to_bytes(1, "little")
         v[len(d) - 1:len(d)] = bytes(1)
         self._switch(d)
 
@@ -785,8 +780,21 @@ class RemotePresets:
         <rooms> must be a list of rooms to consider.
         <available> must be a dict as returned by query_available()."""
         # We need to take care to match only presets which are available for
-        # every room
+        # every room specified
+
+        # Strip every "global" out of the room list. We take special care of
+        # global later on.
+        while "global" in rooms:
+            rooms.remove("global")
+
         matchtable = {}
+        if "global" not in rooms:
+            for preset in available["global"]:
+                # Candidate?
+                if preset == name or preset.find(name) == 0:
+                    # Presets in "global" are available everywhere
+                    matchtable[preset] = len(rooms)
+
         for room in rooms:
             for preset in available[room]:
                 # Candidate? 
@@ -796,12 +804,14 @@ class RemotePresets:
                     else:
                         matchtable[preset] = 1
 
-        # First check if there is an exact match
-        if name in matchtable.keys() and matchtable[name] == len(rooms):
+        # First check if there is an exact match in all rooms
+        if name in matchtable.keys() and matchtable[name] >= len(rooms):
             return name
         # Return first preset available in all rooms
         for match in matchtable.keys():
-            if matchtable[match] == len(rooms):
+            if matchtable[match] >= len(rooms):
+                return match
+            elif match in available["global"]:
                 return match
         # Fallback
         return name
