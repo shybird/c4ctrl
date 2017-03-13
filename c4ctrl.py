@@ -258,7 +258,7 @@ class Wohnzimmer(C4Room):
             Dmx7("dmx/wohnzimmer/mitte3"),
             Dmx7("dmx/wohnzimmer/gang"),
             Dmx7("dmx/wohnzimmer/baellebad"),
-            Dmx("led/kitchen/sink")
+            Dmx7("led/kitchen/sink")
         ]
 
 
@@ -942,10 +942,10 @@ if __name__ == "__main__":
         description="Available room names are \"wohnzimmer\", \"plenar\", \"fnord\" and \"keller\". Preset and room names can be abbreviated.")
     group_rp.add_argument(
         "-r", "--remote-preset", type=str, metavar="PRESET[:ROOM[,ROOM,...]]",
-        help="activate remote PRESET for ROOM.")
+        help="activate remote PRESET for ROOM(s).")
     group_rp.add_argument(
         "-R", "--list-remote", nargs='?', const="global", metavar="ROOM",
-        help="list remote presets for room ROOM")
+        help="list remote presets for ROOM")
     # Switch control
     group_sw = parser.add_argument_group(title="light switch control",
         description="The optional DIGIT_CODE is a string of 0s or 1s for every light in the room. Works interactivly if missing.")
