@@ -42,7 +42,6 @@ class C4Interface():
                         
             if self.debug: return print("[DEBUG] inhibited messages:", cmd)
 
-            print(cmd)
             publish.multiple(cmd,
                     hostname=self.broker,
                     port=self.port)
@@ -62,13 +61,15 @@ class C4Interface():
     def fetch(self, topic=[]):
         """Return current state of topic."""
         from paho.mqtt import subscribe
+        topic = topic or self.topic
+        # <topic> must be a list
+        if type(topic) == str:
+            topic = [topic]
+
         if self.debug:
             print("[DEBUG] inhibited query for:", topic)
             return []
 
-        # <topic> must be a list
-        if type(topic) == str:
-            topic = [topic]
         return subscribe.simple(topic,
                 msg_count=len(topic),
                 qos=self.qos,
@@ -106,48 +107,44 @@ class C4Interface():
 class Dmx:
     """Abstraction of the 3 Channel LED Cans in the Club."""
 
+    template = "000000"
+
     def __init__(self, topic, color=None):
         self.topic = topic
-        if color:
-            self.set_color(color)
-        else:
-            self.color = None
+        self.set_color(color or self.template)
 
     def __repr__(self):
-        return self.topic + " : " + str(self.color)
+        return "<dmx '{}'>".format(self.topic)
 
-    def _pad_color(self, color, template):
+    def _pad_color(self, color):
         """Merge hex color value into hex template."""
         # Expand shorthand hex codes (eg. #f0f) and pad with template
-        if len(color) > len(template): # Truncate
+        if len(color) > len(self.template): # Truncate
             print("Warning: truncating color value {} to {}".format(
-                color, color[:len(template)]))
-            return color[:len(template)]
+                color, color[:len(self.template)]))
+            return color[:len(self.template)]
 
         # Expand 3 char codes and codes of half the required length.
         # Yet, lets presume that a 6-char code should never be expanded.
-        if len(color) != 6 and len(color) == 3 or len(color) == (len(template) / 2):
+        if len(color) != 6 and len(color) == 3 or len(color) == (len(self.template) / 2):
             expanded = ""
             for c in color:
                 expanded += c*2
             color = expanded
 
-        if len(color) == len(template): # Nothing to do
+        if len(color) == len(self.template): # Nothing to do
             return color
 
         # Add padding
-        color = color + template[-(len(template) - len(color)):]
+        color = color + self.template[-(len(self.template) - len(color)):]
         return color
 
     def set_color(self, color):
         """Set color (hex) for this instance.
 
         The color is then available via the color variable."""
+        color = self._pad_color(color)
 
-        if not color:
-            self.color = None
-            return
-        color = self._pad_color(color, "000000")
         self.color = color
         self.payload = bytearray.fromhex(color)
 
@@ -155,19 +152,13 @@ class Dmx:
 class Dmx5(Dmx):
     """Abstraction of the 5 Channel LED Cans in the Club."""
 
-    def set_color(self, color):
-        color = self._pad_color(color, "000000ff")
-        self.color = color
-        self.payload = bytearray.fromhex(color)
+    template = "00000000ff"
 
 
 class Dmx7(Dmx):
     """Abstraction of the 7 Channel LED Cans in the Club."""
 
-    def set_color(self, color):
-        color = self._pad_color(color, "000000000000ff")
-        self.color = color
-        self.payload = bytearray.fromhex(color)
+    template = "000000000000ff"
 
 
 class C4Room:
@@ -428,6 +419,7 @@ class Kitchenlight:
 
     def matrix(self, lines=8):
         """Set to mode "matrix"."""
+        if int(lines) > 30: lines = 30 # Maximal line count
         d = bytearray(8)
         v = memoryview(d)
         # Screen 2
@@ -467,7 +459,7 @@ class Kitchenlight:
             v[13:17] = int(10000).to_bytes(4, "little")
         self._switch(d)
 
-    def openchaos(self, delay=4000):
+    def openchaos(self, delay=1000):
         """Set to mode "openchaos"."""
         d = bytearray(8)
         v = memoryview(d)
@@ -493,14 +485,16 @@ class Kitchenlight:
 
     def text(self, text="Hello World", delay=200):
         """Set to mode "text"."""
+        text = text.encode("latin1", "ignore")
         d = bytearray(8 + len(text) + 1)
         v = memoryview(d)
         # Screen 8
         v[0:4] = int(8).to_bytes(4, "little")
         v[4:8] = int(delay).to_bytes(4, "little")
-        for i in range(len(text)):
-            v[i+8:i+9] = int(ord(text[i])).to_bytes(1, "little")
-        v[len(d)-1:len(d)] = bytes(1)
+        v[8:8 + len(text)] = text
+        #for i in range(len(text)):
+        #    v[i+8:i+9] = int(text[i]).to_bytes(1, "little")
+        v[len(d) - 1:len(d)] = bytes(1)
         self._switch(d)
 
     def flood(self):
