@@ -485,7 +485,7 @@ class Kitchenlight:
 
     def text(self, text="Hello World", delay=200):
         """Set to mode "text"."""
-        text = text.encode("latin1", "ignore")
+        text = text.encode("ascii", "ignore")
         d = bytearray(8 + len(text) + 1)
         v = memoryview(d)
         # Screen 8
