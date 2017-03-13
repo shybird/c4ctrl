@@ -783,7 +783,7 @@ class RemotePresets:
         # every room specified
 
         # Strip every "global" out of the room list. We take special care of
-        # global later on.
+        # "global" later on.
         while "global" in rooms:
             rooms.remove("global")
 
