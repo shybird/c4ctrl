@@ -416,7 +416,7 @@ class Kitchenlight:
 
     def matrix(self, lines=8):
         """Set to mode "matrix"."""
-        if int(lines) > 30: lines = 30 # Maximal line count
+        if int(lines) > 31: lines = 31 # Maximal line count
         d = bytearray(8)
         v = memoryview(d)
         # Screen 2
@@ -480,7 +480,7 @@ class Kitchenlight:
     # Screen 7 is Strobo, which is disabled because it seems to do harm to
     # the Kitchenlight. Evil strobo!
 
-    def text(self, text="Hello World", delay=200):
+    def text(self, text="Hello World", delay=250):
         """Set to mode "text"."""
         text = text.encode("ascii", "ignore")
         d = bytearray(8 + len(text) + 1)
