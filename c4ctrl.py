@@ -1,4 +1,4 @@
-#!/bin/python
+#!/usr/bin/env python3
 #
 # c4ctrl: Command line client for AutoC4
 

@@ -1,4 +1,4 @@
-#!/bin/python
+#!/usr/bin/env python3
 #
 # kitchentext: Read text from stdin and put it on the Kitchenlight
 
