@@ -106,7 +106,7 @@ class C4Interface():
 
 
 class Dmx:
-    """Abstraction of the 3 Channel LED Cans in the Club."""
+    """Abstraction of the 3 channel LED cans in the club."""
 
     template = "000000"
 
@@ -118,8 +118,9 @@ class Dmx:
         return "<Dmx '{}: {}'>".format(self.topic, self.color)
 
     def _pad_color(self, color):
-        """Merge hex color value into hex template."""
-        # Expand shorthand hex codes (eg. #f0f) and pad with template
+        """Merge hex color value into hex template.
+
+        Expand shorthand hex codes (eg. #f0f) and pad with template."""
         if len(color) > len(self.template): # Truncate
             print("Warning: truncating color value {} to {}".format(
                 color, color[:len(self.template)]))
@@ -133,11 +134,11 @@ class Dmx:
                 expanded += c*2
             color = expanded
 
-        if len(color) == len(self.template): # Nothing to do
+        if len(color) == len(self.template): # Nothing more to do
             return color
 
         # Add padding
-        color = color + self.template[-(len(self.template) - len(color)):]
+        color = color + self.template[len(color):]
         return color
 
     def set_color(self, color):
@@ -151,53 +152,61 @@ class Dmx:
 
 
 class Dmx4(Dmx):
-    """Abstraction of the 4 Channel LED Cans in the Club."""
+    """Abstraction of the 4 channel LED cans in the club."""
 
     template = "000000ff"
+
     def __repr__(self):
         return "<Dmx4 '{}: {}'>".format(self.topic, self.color)
 
 
 class Dmx7(Dmx):
-    """Abstraction of the 7 Channel LED Cans in the Club."""
+    """Abstraction of the 7 channel LED cans in the club."""
 
     template = "000000000000ff"
+
     def __repr__(self):
         return "<Dmx7 '{}: {}'>".format(self.topic, self.color)
 
 
 class C4Room:
-    """Base class for Club rooms."""
+    """Base class for club rooms."""
 
-    def interactive_switchctrl(self, userinput="NULL"):
+    def __init__(self):
+        self.c4 = C4Interface()
+
+    def _interactive_light_switch(self):
+        # Interactively ask for input
+        print("[{}]".format(self.name))
+        print("Please enter 0 or 1 for every lamp:")
+        for level in range(len(self.switches)):
+            print((level * '|') + ",- " + self.switches[level][0])
+
+        # Current state of witches
+        state = ""
+        req = []
+        for t in self.switches:
+            req.append(t[1])
+        responce = self.c4.fetch(req)
+        for sw in self.switches:
+            for r in responce:
+                if r.topic == sw[1]:
+                    state = state + str(int.from_bytes(r.payload,
+                            byteorder="little"))
+        print(state)
+
+        try:
+            userinput = sys.stdin.readline().rstrip('\n')
+        except KeyboardInterrupt:
+            print("\rInterrupted by user.")
+            return ""
+
+        return userinput
+
+    def light_switch(self, userinput=""):
         """Switch lamps in this rooms on and off."""
-        c4 = C4Interface()
-
-        if userinput == "NULL":
-            # Interactively ask for input
-            print("[{}]".format(self.name))
-            print("Please enter 0 or 1 for every lamp:")
-            for level in range(len(self.switches)):
-                print((level * '|') + ",- " + self.switches[level][0])
-
-            # Current state of witches
-            state = ""
-            req = []
-            for t in self.switches:
-                req.append(t[1])
-            responce = c4.fetch(req)
-            for sw in self.switches:
-                for r in responce:
-                    if r.topic == sw[1]:
-                        state = state + str(int.from_bytes(r.payload,
-                                byteorder="little"))
-            print(state)
-
-            try:
-                userinput = sys.stdin.readline().rstrip('\n')
-            except KeyboardInterrupt:
-                print("\rInterrupted by user.")
-                return False
+        if not userinput:
+            userinput = self._interactive_light_switch()
 
         if len(userinput) != len(self.switches):
             print("Error: wrong number of digits (expected {}, got {})!".format(
@@ -213,7 +222,8 @@ class C4Room:
                 "topic" : self.switches[si][1],
                 "payload" : bytearray([int(userinput[si])])
             })
-        return c4.update(cmd)
+
+        return self.c4.update(cmd)
 
     def set_colorscheme(self, colorscheme):
         """Apply colorscheme to the LED Cans in this room."""
@@ -226,8 +236,7 @@ class C4Room:
                     "payload" : light.payload
                 })
 
-        c4 = C4Interface()
-        return c4.update(cmd)
+        return self.c4.update(cmd)
 
 
 class Wohnzimmer(C4Room):
@@ -312,6 +321,7 @@ class Keller(C4Room):
 class Kitchenlight:
     """The Kitchenlight."""
 
+    _END = "little" # Endianess
     _available_modes = """
   off                   turn off
   checker[,DELAY[,COLOR_1[,COLOR_2]]]
@@ -377,13 +387,13 @@ class Kitchenlight:
             return self.flood()
         if mode == "clock":
             return self.clock()
-        print('Error: unknown mode "' + mode + '"!')
+        print("Error: unknown Kitchenlight mode {}!".format(mode))
         return False
 
     def empty(self):
         """Set to mode "empty" and turn off Kitchenlight."""
         # Screen 0
-        d = int(0).to_bytes(4, "little")
+        d = int(0).to_bytes(4, self._END)
         self._switch(d, poweroff=True)
 
     def checker(self, delay=500, colA="0000ff", colB="00ff00"):
@@ -394,17 +404,17 @@ class Kitchenlight:
         d = bytearray(20)
         v = memoryview(d)
         # Screen 1
-        v[0:4] = int(1).to_bytes(4, "little")
+        v[0:4] = int(1).to_bytes(4, self._END)
         # Delay
-        v[4:8] = int(delay).to_bytes(4, "little")
+        v[4:8] = int(delay).to_bytes(4, self._END)
         # ColorA R/G/B
-        v[8:10] = int(ca.color[0:2], base=16).to_bytes(2, "little")
-        v[10:12] = int(ca.color[2:4], base=16).to_bytes(2, "little")
-        v[12:14] = int(ca.color[4:6], base=16).to_bytes(2, "little")
+        v[8:10] = int(ca.color[0:2], base=16).to_bytes(2, self._END)
+        v[10:12] = int(ca.color[2:4], base=16).to_bytes(2, self._END)
+        v[12:14] = int(ca.color[4:6], base=16).to_bytes(2, self._END)
         # ColorB R/G/B
-        v[14:16] = int(cb.color[0:2], base=16).to_bytes(2, "little")
-        v[16:18] = int(cb.color[2:4], base=16).to_bytes(2, "little")
-        v[18:20] = int(cb.color[4:6], base=16).to_bytes(2, "little")
+        v[14:16] = int(cb.color[0:2], base=16).to_bytes(2, self._END)
+        v[16:18] = int(cb.color[2:4], base=16).to_bytes(2, self._END)
+        v[18:20] = int(cb.color[4:6], base=16).to_bytes(2, self._END)
         self._switch(d)
 
     def matrix(self, lines=8):
@@ -413,8 +423,8 @@ class Kitchenlight:
         d = bytearray(8)
         v = memoryview(d)
         # Screen 2
-        v[0:4] = int(2).to_bytes(4, "little")
-        v[4:8] = int(lines).to_bytes(4, "little")
+        v[0:4] = int(2).to_bytes(4, self._END)
+        v[4:8] = int(lines).to_bytes(4, self._END)
         self._switch(d)
 
     def moodlight(self, mode=1):
@@ -423,30 +433,30 @@ class Kitchenlight:
             d = bytearray(19)
             v = memoryview(d)
             # Screen 3
-            v[0:4] = int(3).to_bytes(4, "little")
+            v[0:4] = int(3).to_bytes(4, self._END)
             # Mode
-            v[4:5] = int(mode).to_bytes(1, "little")
+            v[4:5] = int(mode).to_bytes(1, self._END)
             # Step
-            v[5:9] = int(1).to_bytes(4, "little")
+            v[5:9] = int(1).to_bytes(4, self._END)
             # Fade delay
-            v[9:13] = int(10).to_bytes(4, "little")
+            v[9:13] = int(10).to_bytes(4, self._END)
             # Pause
-            v[13:17] = int(10000).to_bytes(4, "little")
+            v[13:17] = int(10000).to_bytes(4, self._END)
             # Hue step
-            v[17:19] = int(30).to_bytes(2, "little")
+            v[17:19] = int(30).to_bytes(2, self._END)
         else: # Mode "Random"
             d = bytearray(17)
             v = memoryview(d)
             # Screen 3
-            v[0:4] = int(3).to_bytes(4, "little")
+            v[0:4] = int(3).to_bytes(4, self._END)
             # Mode
-            v[4:5] = int(mode).to_bytes(1, "little")
+            v[4:5] = int(mode).to_bytes(1, self._END)
             # Step
-            v[5:9] = int(1).to_bytes(4, "little")
+            v[5:9] = int(1).to_bytes(4, self._END)
             # Fade delay
-            v[9:13] = int(10).to_bytes(4, "little")
+            v[9:13] = int(10).to_bytes(4, self._END)
             # Pause
-            v[13:17] = int(10000).to_bytes(4, "little")
+            v[13:17] = int(10000).to_bytes(4, self._END)
         self._switch(d)
 
     def openchaos(self, delay=1000):
@@ -454,20 +464,20 @@ class Kitchenlight:
         d = bytearray(8)
         v = memoryview(d)
         # Screen 4
-        v[0:4] = int(4).to_bytes(4, "little")
-        v[4:8] = int(delay).to_bytes(4, "little")
+        v[0:4] = int(4).to_bytes(4, self._END)
+        v[4:8] = int(delay).to_bytes(4, self._END)
         self._switch(d)
 
     def pacman(self):
         """Set to mode "pacman"."""
         # Screen 5
-        d = int(5).to_bytes(4, "little")
+        d = int(5).to_bytes(4, self._END)
         self._switch(d)
 
     def sine(self):
         """Set to mode "sine"."""
         # Screen 6
-        d = int(6).to_bytes(4, "little")
+        d = int(6).to_bytes(4, self._END)
         self._switch(d)
 
     # Screen 7 is Strobo, which is disabled because it seems to do harm to
@@ -482,8 +492,8 @@ class Kitchenlight:
         d = bytearray(8 + len(text) + 1)
         v = memoryview(d)
         # Screen 8
-        v[0:4] = int(8).to_bytes(4, "little")
-        v[4:8] = int(delay).to_bytes(4, "little")
+        v[0:4] = int(8).to_bytes(4, self._END)
+        v[4:8] = int(delay).to_bytes(4, self._END)
         v[8:8 + len(text)] = text
         v[len(d) - 1:len(d)] = bytes(1)
         self._switch(d)
@@ -491,20 +501,20 @@ class Kitchenlight:
     def flood(self):
         """Set to mode "flood"."""
         # Screen 9
-        d = int(9).to_bytes(4, "little")
+        d = int(9).to_bytes(4, self._END)
         self._switch(d)
 
     def clock(self):
         """Set to mode "clock"."""
         # Screen 11
-        d = int(11).to_bytes(4, "little")
+        d = int(11).to_bytes(4, self._END)
         self._switch(d)
 
 
 class ColorScheme:
     """Abstraction of a colorscheme."""
 
-    # Virtual presets
+    # Names of virtual presets
     _virtual_presets = ["off", "random"]
 
     def __init__(self, autoinit=""):
@@ -515,16 +525,15 @@ class ColorScheme:
         if autoinit:
             # Load or generate preset
             if autoinit[0] == '#':
-                if '/' in autoinit:
-                    return self.from_color(autoinit.split('/'))
-                else:
-                    return self.from_color(autoinit)
+                return self.from_color(autoinit)
             elif self._expand_preset(autoinit) == "off":
-                # Special case. Sets masters to #000000
+                # Virtual preset: set masters to #000000
                 return self.from_color("000000")
             elif self._expand_preset(autoinit) == "random":
+                # Virtual preset: return random color on every query
                 return self.from_random()
             else:
+                # Load preset file
                 return self.from_file(autoinit)
 
     def __bool__(self):
@@ -605,8 +614,8 @@ class ColorScheme:
                 return None
             else:
                 return self._random_color()
-        else:
-            return None
+        # Fallback
+        return None
 
     def from_file(self, preset):
         """Load ColorScheme from file."""
@@ -946,16 +955,16 @@ if __name__ == "__main__":
     group_sw = parser.add_argument_group(title="light switch control",
         description="The optional DIGIT_CODE is a string of 0s or 1s for every light in the room. Works interactivly if missing.")
     group_sw.add_argument(
-        "-W", nargs='?', dest="w_switch", const="NULL", metavar="DIGIT_CODE",
+        "-W", nargs='?', dest="w_switch", const="", metavar="DIGIT_CODE",
         help="switch lights in Wohnzimmer on/off")
     group_sw.add_argument(
-        "-P", nargs='?', dest="p_switch", const="NULL", metavar="DIGIT_CODE",
+        "-P", nargs='?', dest="p_switch", const="", metavar="DIGIT_CODE",
         help="switch lights in Plenarsaal on/off")
     group_sw.add_argument(
-        "-F", nargs='?', dest="f_switch", const="NULL", metavar="DIGIT_CODE",
+        "-F", nargs='?', dest="f_switch", const="", metavar="DIGIT_CODE",
         help="switch lights in Fnordcentter on/off")
     group_sw.add_argument(
-        "-K", nargs='?', dest="k_switch", const="NULL", metavar="DIGIT_CODE",
+        "-K", nargs='?', dest="k_switch", const="", metavar="DIGIT_CODE",
         help="switch lights in Keller on/off")
     args = parser.parse_args()
 
@@ -1003,8 +1012,6 @@ if __name__ == "__main__":
     if args.list_remote:
         RemotePresets().list_available(args.list_remote.lower())
     if args.remote_preset:
-        # Lets try to preserve spaces
-        #remote_opts = ' '.join(args.remote_preset).split(':')
         remote_opts = args.remote_preset.split(':')
         if len(remote_opts) == 1:
             RemotePresets().apply_preset(remote_opts[0].strip())
@@ -1013,14 +1020,14 @@ if __name__ == "__main__":
                     remote_opts[1].lower().split(','))
 
     # Light switches
-    if args.w_switch:
-        Wohnzimmer().interactive_switchctrl(args.w_switch)
-    if args.p_switch:
-        Plenarsaal().interactive_switchctrl(args.p_switch)
-    if args.f_switch:
-        Fnordcenter().interactive_switchctrl(args.f_switch)
-    if args.k_switch:
-        Keller().interactive_switchctrl(args.k_switch)
+    if args.w_switch != None:
+        Wohnzimmer().light_switch(args.w_switch)
+    if args.p_switch != None:
+        Plenarsaal().light_switch(args.p_switch)
+    if args.f_switch != None:
+        Fnordcenter().light_switch(args.f_switch)
+    if args.k_switch != None:
+        Keller().light_switch(args.k_switch)
 
     # No command line options or only debug?
     if len(sys.argv) <= 1 or len(sys.argv) == 2 and args.debug:
