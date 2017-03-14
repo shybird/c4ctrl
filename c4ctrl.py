@@ -17,12 +17,13 @@ class C4Interface():
         # Set a default topic
         if topic: self.topic = topic
 
-    def update(self, cmd, topic=None):
+    def update(self, cmd, topic=None, retain=True):
         """Send cmd to topic via the MQTT broker."""
         from paho.mqtt import publish
 
-        # Overwrite default topic
+        # Overwrite defaults
         if topic: self.topic = topic
+        if retain == False: self.retain = retain
 
         if type(cmd) == list:
             # Add <qos> and <retain> to every message
@@ -93,7 +94,7 @@ class C4Interface():
 
     def open_gate(self):
         """Open the gate."""
-        self.update(cmd=b'\x01', topic="club/gate")
+        self.update(cmd=b'\x01', topic="club/gate", retain=False)
 
     def shutdown(self, force=False):
         """Invoke the shutdown routine.""" 
@@ -101,7 +102,7 @@ class C4Interface():
             payload = b'\x44'
         else:
             payload = b'\x00'
-        self.update(cmd=payload, topic="club/shutdown")
+        self.update(cmd=payload, topic="club/shutdown", retain=False)
 
 
 class Dmx:
