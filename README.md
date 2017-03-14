@@ -1,5 +1,5 @@
 # c4ctrl
-Command line client for AutoC4.
+Command line client and utilities for AutoC4.
 
 ## Dependencies
 * Python 3.?: [[https://www.python.org/]]
@@ -8,4 +8,7 @@ Command line client for AutoC4.
 ## Usage
 ```
 c4ctrl.py -h
+```
+```
+kitchentext.py -h
 ```
