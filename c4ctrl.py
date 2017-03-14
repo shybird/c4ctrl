@@ -488,6 +488,9 @@ class Kitchenlight:
     def text(self, text="Hello World", delay=250):
         """Set to mode "text"."""
         text = text.encode("ascii", "ignore")
+        if len(text) > 256: # Maximum text length
+            print("Warning: text length must not exceed 256 characters!")
+            text = text[:256]
         d = bytearray(8 + len(text) + 1)
         v = memoryview(d)
         # Screen 8
