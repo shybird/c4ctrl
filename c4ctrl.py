@@ -218,18 +218,6 @@ class C4Room:
     def set_colorscheme(self, colorscheme):
         """Apply colorscheme to the LED Cans in this room."""
         cmd = []
-        # Todo: this stuff would make sense if the Sink Light would be slave
-        # to a master
-        #if colorscheme.single_color:
-        #    # Setting only master is more efficient here
-        #    if colorscheme.color_for(self.master):
-        #        self.master.set_color(colorscheme.color_for(self.master))
-        #        cmd.append({
-        #            "topic" : self.master.topic,
-        #            "payload" : self.master.payload
-        #        })
-        #else:
-        # Iterate over every light (including master!)
         for light in self.lights:
             if colorscheme.color_for(light.topic):
                 light.set_color(colorscheme.color_for(light.topic))
