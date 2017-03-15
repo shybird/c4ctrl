@@ -144,7 +144,7 @@ class Dmx:
     def set_color(self, color):
         """Set color (hex) for this instance.
 
-        The color is then available via the color variable."""
+        The color is then available via its color variable."""
         color = self._pad_color(color)
 
         self.color = color
@@ -926,7 +926,7 @@ if __name__ == "__main__":
         help="list available Kitchenlight modes and their options")
     # Ambient control
     group_cl = parser.add_argument_group(title="ambient color control",
-        description="PRESET may be either a preset name (which may be abbreviated) or a '#' followed by a color value in hex notation (eg. \"#ff0066\").")
+        description="PRESET may be either a preset name (which may be abbreviated) or '#' followed by a color value in hex notation (eg. \"#ff0066\").")
     group_cl.add_argument(
         "-w", "--wohnzimmer", type=str, dest="w_color", metavar="PRESET",
         help="apply local colorscheme PRESET to Wohnzimmer")
@@ -944,7 +944,7 @@ if __name__ == "__main__":
         help="store current state as preset NAME")
     # Remote presets
     group_rp = parser.add_argument_group(title="remote preset functions",
-        description="Available room names are \"wohnzimmer\", \"plenar\", \"fnord\" and \"keller\". Preset and room names can be abbreviated.")
+        description="Available room names are \"wohnzimmer\", \"plenar\", \"fnord\" and \"keller\". Preset and room names may be abbreviated.")
     group_rp.add_argument(
         "-r", "--remote-preset", type=str, metavar="PRESET[:ROOM[,ROOM,...]]",
         help="activate remote PRESET for ROOM(s).")

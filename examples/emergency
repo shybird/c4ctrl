@@ -1,0 +1,62 @@
+# "Emergency" colorscheme for c4ctrl
+
+# Put this file into "$XDG_CONFIG_DIR/c4ctrl/" (likely "~/.config/c4ctrl/") to
+# make it available to c4ctrl.py. 
+# This preset uses some more advanced features of the LED cans in the club.
+# The following table lists their options.
+# 
+## 4-channel cans (deployed in the Fnordcenter) ##
+#
+# 1 00-ff   Red
+# 2 00-ff   Green
+# 3 00-ff   Blue
+# 7 00-ff   Dimmer 0% -> 100%
+#
+## 7-channel cans (deployed in Wohnzimmer and Plenarsaal) ##
+#
+# 1 00-ff   Red
+# 2 00-ff   Green
+# 3 00-ff   Blue
+# 4 00-07   Nothing
+#   08-ff   Color Macro
+# 5 00-0f   Nothing
+#   10-ff   Strobing/Macro Speed
+# 6 00-1f   Nothing
+#   ff-3f   Dim -> Bright
+#   40-5f   Bright -> Dim
+#   60-7f   Dim -> Bright -> Dim
+#   80-9f   Color Mixing
+#   a0-bf   3 Color Change
+#   c0-df   7 Color Change
+#   e0-ff   Sound Active
+# 7 00-ff   Dimmer 0% -> 100%
+
+# Wohnzimmer + Küche
+dmx/wohnzimmer/master = ff000000f040ff
+#dmx/wohnzimmer/tuer1 = ff000000f040ff
+#dmx/wohnzimmer/tuer2 = ff000000f040ff
+#dmx/wohnzimmer/tuer3 = ff000000f040ff
+#dmx/wohnzimmer/mitte1 = ff000000f040ff
+#dmx/wohnzimmer/mitte2 = ff000000f040ff
+#dmx/wohnzimmer/mitte3 = ff000000f040ff
+#dmx/wohnzimmer/gang = ff000000f040ff
+#dmx/wohnzimmer/baellebad = ff000000f040ff
+led/kitchen/sink = 000000
+
+# Fnordcenter
+dmx/fnord/master = ff0000ff
+#dmx/fnord/scummfenster = ff0000ff
+#dmx/fnord/schranklinks = ff0000ff
+#dmx/fnord/fairyfenster = ff0000ff
+#dmx/fnord/schrankrechts = ff0000ff
+
+# Plenarsaal
+dmx/plenar/master = ff000000f040ff
+#dmx/plenar/vorne1 = ff000000f040ff
+#dmx/plenar/vorne2 = ff000000f040ff
+#dmx/plenar/vorne3 = ff000000f040ff
+#dmx/plenar/hinten1 = ff000000f040ff
+#dmx/plenar/hinten2 = ff000000f040ff
+#dmx/plenar/hinten3 = ff000000f040ff
+#dmx/plenar/hinten4 = ff000000f040ff
+

@@ -1,0 +1,34 @@
+# "Beach" colorscheme for c4ctrl
+
+# Put this file into "$XDG_CONFIG_DIR/c4ctrl/" (likely "~/.config/c4ctrl/") to
+# make it available to c4ctrl.py.
+
+# Wohnzimmer + Küche
+#dmx/wohnzimmer/master = 3300ff
+dmx/wohnzimmer/tuer1 = ff3300
+dmx/wohnzimmer/tuer2 = ff6633
+dmx/wohnzimmer/tuer3 = ff6633
+dmx/wohnzimmer/mitte1 = 3300ff
+dmx/wohnzimmer/mitte2 = 000000
+dmx/wohnzimmer/mitte3 = 3300ff
+dmx/wohnzimmer/gang = 3300ff
+dmx/wohnzimmer/baellebad = ff3300
+led/kitchen/sink = ff2000
+
+# Fnordcenter
+#dmx/fnord/master = 3300ff
+dmx/fnord/scummfenster = ff3300
+dmx/fnord/schranklinks = 3300ff
+dmx/fnord/fairyfenster = ff3300
+dmx/fnord/schrankrechts = 3300ff
+
+# Plenarsaal
+#dmx/plenar/master = 3300ff
+dmx/plenar/vorne1 = ff3300
+dmx/plenar/vorne2 = ff3300
+dmx/plenar/vorne3 = ff3300
+dmx/plenar/hinten1 = 3300ff
+dmx/plenar/hinten2 = 3300ff
+dmx/plenar/hinten3 = ff0033
+dmx/plenar/hinten4 = ff0033
+

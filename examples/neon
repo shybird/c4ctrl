@@ -1,0 +1,34 @@
+# "Neon" colorscheme for c4ctrl
+
+# Put this file into "$XDG_CONFIG_DIR/c4ctrl/" (likely "~/.config/c4ctrl/") to
+# make it available to c4ctrl.py. 
+
+# Wohnzimmer + Küche
+#dmx/wohnzimmer/master = 0033ff
+dmx/wohnzimmer/tuer1 = ff0033
+dmx/wohnzimmer/tuer2 = ff0033
+dmx/wohnzimmer/tuer3 = ff0033
+dmx/wohnzimmer/mitte1 = 00ff00
+dmx/wohnzimmer/mitte2 = 0033ff
+dmx/wohnzimmer/mitte3 = 0033ff
+dmx/wohnzimmer/gang = 0033ff
+dmx/wohnzimmer/baellebad = 00ff00
+led/kitchen/sink = ff00ff
+
+# Fnordcenter
+#dmx/fnord/master = 0033ff
+dmx/fnord/scummfenster = ff0033
+dmx/fnord/schranklinks = 0033ff
+dmx/fnord/fairyfenster = ff0033
+dmx/fnord/schrankrechts = 0033ff
+
+# Plenarsaal
+#dmx/plenar/master = 0033ff
+dmx/plenar/vorne1 = 0033ff
+dmx/plenar/vorne2 = 0033ff
+dmx/plenar/vorne3 = 00ff00
+dmx/plenar/hinten1 = ff0033
+dmx/plenar/hinten2 = ff0033
+dmx/plenar/hinten3 = 0033ff
+dmx/plenar/hinten4 = 0033ff
+
