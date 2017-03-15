@@ -44,7 +44,7 @@ def kitchentext(delay=200, single=False, wait=False, restore=False, poweron=Fals
     # Store previous state
     if restore:
         c4 = C4Interface([kl.topic, kl.powertopic])
-        safe = c4.fetch()
+        safe = c4.pull()
 
     try:
         stop = False
@@ -97,7 +97,7 @@ def kitchentext(delay=200, single=False, wait=False, restore=False, poweron=Fals
         if restore:
             re = []
             for top in safe: re.append((top.topic, top.payload))
-            c4.update(re)
+            c4.push(re)
 
 
 if __name__ == "__main__":

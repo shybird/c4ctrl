@@ -17,7 +17,7 @@ class C4Interface():
         # Set a default topic
         if topic: self.topic = topic
 
-    def update(self, cmd, topic=None, retain=True):
+    def push(self, cmd, topic=None, retain=True):
         """Send cmd to topic via the MQTT broker."""
         from paho.mqtt import publish
 
@@ -59,7 +59,7 @@ class C4Interface():
                     hostname=self.broker,
                     port=self.port)
 
-    def fetch(self, topic=[]):
+    def pull(self, topic=[]):
         """Return current state of topic."""
         from paho.mqtt import subscribe
         topic = topic or self.topic
@@ -79,7 +79,7 @@ class C4Interface():
 
     def status(self):
         """Print current status (open or closed) of C4."""
-        st = self.fetch("club/status")
+        st = self.pull("club/status")
 
         # Produce fake result to prevent errors if in debug mode
         if C4Interface.debug:
@@ -94,7 +94,7 @@ class C4Interface():
 
     def open_gate(self):
         """Open the gate."""
-        self.update(cmd=b'\x01', topic="club/gate", retain=False)
+        self.push(cmd=b'\x01', topic="club/gate", retain=False)
 
     def shutdown(self, force=False):
         """Invoke the shutdown routine.""" 
@@ -102,7 +102,7 @@ class C4Interface():
             payload = b'\x44'
         else:
             payload = b'\x00'
-        self.update(cmd=payload, topic="club/shutdown", retain=False)
+        self.push(cmd=payload, topic="club/shutdown", retain=False)
 
 
 class Dmx:
@@ -120,7 +120,7 @@ class Dmx:
     def _pad_color(self, color):
         """Merge hex color value into hex template.
 
-        Expand shorthand hex codes (eg. #f0f) and pad with template."""
+        Expand 4 bit hex code notation (eg. #f0f) and pad with template."""
         if len(color) > len(self.template): # Truncate
             print("Warning: truncating color value {} to {}".format(
                 color, color[:len(self.template)]))
@@ -187,13 +187,13 @@ class C4Room:
         req = []
         for t in self.switches:
             req.append(t[1])
-        responce = self.c4.fetch(req)
+        responce = self.c4.pull(req)
         for sw in self.switches:
             for r in responce:
                 if r.topic == sw[1]:
                     state = state + str(int.from_bytes(r.payload,
                             byteorder="little"))
-        print(state)
+        print(state) # Present current state
 
         try:
             userinput = sys.stdin.readline().rstrip('\n')
@@ -223,7 +223,7 @@ class C4Room:
                 "payload" : bytearray([int(userinput[si])])
             })
 
-        return self.c4.update(cmd)
+        return self.c4.push(cmd)
 
     def set_colorscheme(self, colorscheme):
         """Apply colorscheme to the LED Cans in this room."""
@@ -236,7 +236,7 @@ class C4Room:
                     "payload" : light.payload
                 })
 
-        return self.c4.update(cmd)
+        return self.c4.push(cmd)
 
 
 class Wohnzimmer(C4Room):
@@ -359,10 +359,10 @@ class Kitchenlight:
                 cmd.append({
                     "topic" : self.powertopic,
                     "payload" : bytearray((1,))})
-            c4.update(cmd)
+            c4.push(cmd)
         else:
             c4 = C4Interface(self.topic)
-            c4.update(data)
+            c4.push(data)
 
     def set_mode(self, mode, opts=[]):
         """Switch to given mode."""
@@ -714,7 +714,7 @@ class ColorScheme:
             for light in room.lights:
                 topics.append(light.topic)
 
-            responce = c4.fetch(topics)
+            responce = c4.pull(topics)
             fd.write("\n# {}\n".format(room.name))
             for light in room.lights:
                 for r in responce:
@@ -838,7 +838,7 @@ class RemotePresets:
             req.append(self.map[room]["list_topic"])
 
         c4 = C4Interface()
-        responce = c4.fetch(req)
+        responce = c4.pull(req)
         # Make responce iterable
         if type(responce) != list: responce = [responce]
 
@@ -894,7 +894,7 @@ class RemotePresets:
             cmd.append((self.map[room]["set_topic"], preset))
 
         c4 = C4Interface()
-        return c4.update(cmd)
+        return c4.push(cmd)
 
 
 if __name__ == "__main__":
@@ -926,7 +926,7 @@ if __name__ == "__main__":
         help="list available Kitchenlight modes and their options")
     # Ambient control
     group_cl = parser.add_argument_group(title="ambient color control",
-        description="PRESET may be either a preset name or a color value in hex notation (eg. \"#ff0066\").")
+        description="PRESET may be either a preset name (which may be abbreviated) or a '#' followed by a color value in hex notation (eg. \"#ff0066\").")
     group_cl.add_argument(
         "-w", "--wohnzimmer", type=str, dest="w_color", metavar="PRESET",
         help="apply local colorscheme PRESET to Wohnzimmer")
