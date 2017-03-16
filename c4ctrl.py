@@ -260,7 +260,7 @@ class Wohnzimmer(C4Room):
             Dmx7("dmx/wohnzimmer/mitte3"),
             Dmx7("dmx/wohnzimmer/gang"),
             Dmx7("dmx/wohnzimmer/baellebad"),
-            Dmx7("led/kitchen/sink")
+            Dmx("led/kitchen/sink")
         ]
 
 
@@ -678,7 +678,7 @@ class ColorScheme:
             self.available = os.listdir(cfg_dir)
             self.available.extend(self._virtual_presets)
         self.available.sort()
-        print("Available presets:")
+        print("Available presets:\n")
         for entry in self.available:
             if entry[0] == '.' or entry[-1:] == '~': continue
             print("  " + entry)
