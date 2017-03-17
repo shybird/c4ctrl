@@ -113,6 +113,7 @@ class Dmx:
     def __init__(self, topic, color=None):
         self.topic = topic
         self.set_color(color or self.template)
+        self.is_master = topic.rfind("/master") == len(topic)-7 # 7 = len("/master")
 
     def __repr__(self):
         return "<Dmx '{}: {}'>".format(self.topic, self.color)
@@ -225,18 +226,28 @@ class C4Room:
 
         return self.c4.push(cmd)
 
-    def set_colorscheme(self, colorscheme):
+    def set_colorscheme(self, colorscheme, magic=False):
         """Apply colorscheme to the LED Cans in this room."""
         cmd = []
         for light in self.lights:
             if colorscheme.color_for(light.topic):
-                light.set_color(colorscheme.color_for(light.topic))
-                cmd.append({
-                    "topic" : light.topic,
-                    "payload" : light.payload
-                })
+                if magic: # Send color to ghost, but skip masters
+                    if light.is_master: continue
 
-        return self.c4.push(cmd)
+                    light.set_color(colorscheme.color_for(light.topic))
+                    cmd.append({
+                        "topic" : "ghost" + light.topic[light.topic.find('/'):],
+                        "payload" : light.payload
+                    })
+                else:
+                    light.set_color(colorscheme.color_for(light.topic))
+                    cmd.append({
+                        "topic" : light.topic,
+                        "payload" : light.payload
+                    })
+
+        # Do not retain "magic" messages
+        return self.c4.push(cmd, retain=(not magic))
 
 
 class Wohnzimmer(C4Room):
@@ -610,7 +621,7 @@ class ColorScheme:
             return self.single_color
         elif self.return_random_color:
             # Returning a value for master would override all other settings
-            if self._topic_is_master(topic): # 7 = len("/master")
+            if self._topic_is_master(topic):
                 return None
             else:
                 return self._random_color()
@@ -720,7 +731,7 @@ class ColorScheme:
                 for r in responce:
                     if r.topic == light.topic:
                         light.set_color(r.payload.hex())
-                        # Out comment master, as it would overre everything else
+                        # Out comment master, as it would override everything else
                         if self._topic_is_master(r.topic):
                             fd.write("#{} = {}\n".format(light.topic, light.color))
                         else:
@@ -937,6 +948,9 @@ if __name__ == "__main__":
         "-f", "--fnordcenter", type=str, dest="f_color", metavar="PRESET",
         help="apply local colorscheme PRESET to Fnordcenter")
     group_cl.add_argument(
+        "-m", "--magic", action="store_true", default=False,
+        help="EXPERIMENTAL: blend into preset (needs a running instance of fluffyd)")
+    group_cl.add_argument(
         "-l", "--list-presets", action="store_true",
         help="list locally available presets")
     group_cl.add_argument(
@@ -998,13 +1012,13 @@ if __name__ == "__main__":
         ColorScheme().store(args.store_as)
     if args.w_color:
         preset = ColorScheme(autoinit=args.w_color)
-        if preset: Wohnzimmer().set_colorscheme(preset)
+        if preset: Wohnzimmer().set_colorscheme(preset, args.magic)
     if args.p_color:
         preset = ColorScheme(autoinit=args.p_color)
-        if preset: Plenarsaal().set_colorscheme(preset)
+        if preset: Plenarsaal().set_colorscheme(preset, args.magic)
     if args.f_color:
         preset = ColorScheme(autoinit=args.f_color)
-        if preset: Fnordcenter().set_colorscheme(preset)
+        if preset: Fnordcenter().set_colorscheme(preset, args.magic)
     if args.list_presets:
         ColorScheme().list_available()
 
