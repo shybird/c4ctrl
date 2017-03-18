@@ -236,7 +236,7 @@ class C4Room:
 
                     light.set_color(colorscheme.color_for(light.topic))
                     cmd.append({
-                        "topic" : "ghost" + light.topic[light.topic.find('/'):],
+                        "topic" : "ghosts" + light.topic[light.topic.find('/'):],
                         "payload" : light.payload
                     })
                 else:
