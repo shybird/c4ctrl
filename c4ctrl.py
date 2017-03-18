@@ -608,22 +608,13 @@ class ColorScheme:
         from random import randint, sample
         chls = [15]
         chls.append(randint(0,15))
-        chls.append(randint(0,7) - chls[1])
+        chls.append(randint(0,15) - chls[1])
         if chls[2] < 0: chls[2] = 0
 
         color = ""
         for ch in sample(chls, k=3):
             color += hex(ch)[2:]*2
         return color
-
-    #def _random_color(self):
-    #    """Returns a random 6 char hex color."""
-    #    from random import randint
-    #    color = ""
-    #    for i in range(6):
-    #        # Dont return smaller values than 11
-    #        color = color + hex(randint(1, 15))[2:]
-    #    return color
 
     def color_for(self, topic):
         """Returns the color (hex) this ColorScheme provides for the given topic."""
