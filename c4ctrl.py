@@ -210,7 +210,8 @@ class C4Room:
             userinput = self._interactive_light_switch()
 
         if len(userinput) != len(self.switches):
-            if int(userinput) <= 15:
+            if int(userinput) <= 15 and len(bin(int(userinput))) <= len(self.switches)+2:
+                # +2 because bin() returns something like 'b0...'
                 # Try to interpret as integer
                 binary = bin(int(userinput))[2:]
                 userinput = str(len(self.switches)*'0')[:-len(binary)] + binary
