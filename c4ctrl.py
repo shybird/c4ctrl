@@ -62,7 +62,7 @@ class C4Interface():
     def pull(self, topic=[]):
         """Return current state of topic."""
         from paho.mqtt import subscribe
-        topic = topic.copy() or self.topic
+        topic = topic or self.topic
         # <topic> must be a list
         if type(topic) == str:
             topic = [topic]
