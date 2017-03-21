@@ -62,7 +62,7 @@ class C4Interface():
     def pull(self, topic=[]):
         """Return current state of topic."""
         from paho.mqtt import subscribe
-        topic = topic or self.topic
+        topic = topic.copy() or self.topic
         # <topic> must be a list
         if type(topic) == str:
             topic = [topic]
@@ -1047,7 +1047,7 @@ if __name__ == "__main__":
     if args.k_switch != None:
         Keller().light_switch(args.k_switch)
 
-    # No command line options or only debug?
+    # No or no useful command line options?
     if len(sys.argv) <= 1 or len(sys.argv) == 2 and args.debug:
         parser.print_help()
 
