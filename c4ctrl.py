@@ -210,9 +210,14 @@ class C4Room:
             userinput = self._interactive_light_switch()
 
         if len(userinput) != len(self.switches):
-            print("Error: wrong number of digits (expected {}, got {})!".format(
-                    len(self.switches), len(userinput)))
-            return False
+            if int(userinput) <= 15:
+                # Try to interpret as integer
+                binary = bin(int(userinput))[2:]
+                userinput = str(len(self.switches)*'0')[:-len(binary)] + binary
+            else:
+                print("Error: wrong number of digits (expected {}, got {})!".format(
+                        len(self.switches), len(userinput)))
+                return False
 
         cmd=[]
         for si in range(len(self.switches)):
@@ -953,7 +958,7 @@ if __name__ == "__main__":
         help="apply local colorscheme PRESET to Fnordcenter")
     group_cl.add_argument(
         "-m", "--magic", action="store_true", default=False,
-        help="EXPERIMENTAL: blend into preset (needs a running instance of fluffyd)")
+        help="EXPERIMENTAL: blend into preset (needs a running instance of fluffyd on the network)")
     group_cl.add_argument(
         "-l", "--list-presets", action="store_true",
         help="list locally available presets")
@@ -971,7 +976,7 @@ if __name__ == "__main__":
         help="list remote presets for ROOM")
     # Switch control
     group_sw = parser.add_argument_group(title="light switch control",
-        description="The optional DIGIT_CODE is a string of 0s or 1s for every light in the room. Works interactivly if missing.")
+        description="The optional DIGIT_CODE is a string of 0s or 1s for every light in the room. Works interactively if missing.")
     group_sw.add_argument(
         "-W", nargs='?', dest="w_switch", const="", metavar="DIGIT_CODE",
         help="switch lights in Wohnzimmer on/off")
