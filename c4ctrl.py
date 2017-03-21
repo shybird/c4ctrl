@@ -254,14 +254,14 @@ class Wohnzimmer(C4Room):
     """The Wohnzimmer."""
 
     name = "Wohnzimmer"
-    switches = [
+    switches = (
             ("Tür", "licht/wohnzimmer/tuer"),
             ("Mitte", "licht/wohnzimmer/mitte"),
             ("Flur", "licht/wohnzimmer/gang"),
             ("Küche", "licht/wohnzimmer/kueche")
-        ]
+        )
     master = Dmx7("dmx/wohnzimmer/master")
-    lights = [
+    lights = (
             Dmx7("dmx/wohnzimmer/master"),
             Dmx7("dmx/wohnzimmer/tuer1"),
             Dmx7("dmx/wohnzimmer/tuer2"),
@@ -272,21 +272,21 @@ class Wohnzimmer(C4Room):
             Dmx7("dmx/wohnzimmer/gang"),
             Dmx7("dmx/wohnzimmer/baellebad"),
             Dmx("led/kitchen/sink")
-        ]
+        )
 
 
 class Plenarsaal(C4Room):
     """The Plenarsaal."""
 
     name = "Plenarsaal"
-    switches = [
+    switches = (
             ("Vorne/Wand", "licht/plenar/vornewand"),
             ("Vorne/Fenster", "licht/plenar/vornefenster"),
             ("Hinten/Wand", "licht/plenar/hintenwand"),
             ("Hinten/Fenster", "licht/plenar/hintenfenster")
-        ]
+        )
     master = Dmx7("dmx/plenar/master")
-    lights = [
+    lights = (
             Dmx7("dmx/plenar/master"),
             Dmx7("dmx/plenar/vorne1"),
             Dmx7("dmx/plenar/vorne2"),
@@ -295,38 +295,38 @@ class Plenarsaal(C4Room):
             Dmx7("dmx/plenar/hinten2"),
             Dmx7("dmx/plenar/hinten3"),
             Dmx7("dmx/plenar/hinten4")
-        ]
+        )
 
 
 class Fnordcenter(C4Room):
     """The Fnordcenter."""
 
     name = "Fnordcenter"
-    switches = [
+    switches = (
             ("Links (Fairydust)", "licht/fnord/links"),
             ("Rechts (SCUMM)", "licht/fnord/rechts")
-        ]
+        )
     master = Dmx4("dmx/fnord/master")
-    lights = [
+    lights = (
             Dmx4("dmx/fnord/master"),
             Dmx4("dmx/fnord/scummfenster"),
             Dmx4("dmx/fnord/schranklinks"),
             Dmx4("dmx/fnord/fairyfenster"),
             Dmx4("dmx/fnord/schrankrechts")
-        ]
+        )
 
 
 class Keller(C4Room):
     """The Keller."""
 
     name = "Keller"
-    switches = [
+    switches = (
             ("Außen", "licht/keller/aussen"),
             ("Innen", "licht/keller/innen"),
             ("Vorne", "licht/keller/vorne")
-        ]
+        )
     master = ""
-    lights = []
+    lights = tuple()
 
 
 class Kitchenlight:
