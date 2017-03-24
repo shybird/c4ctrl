@@ -760,7 +760,8 @@ class Fluffy:
 
     modes = {
         "fade" : 1,
-        "wave" : 4
+        "wave" : 4,
+        "emp" : 8
     }
 
     def mode_id(self, name):
@@ -983,7 +984,7 @@ if __name__ == "__main__":
         help="apply local colorscheme PRESET to Fnordcenter")
     group_cl.add_argument(
         "-m", "--magic", type=str, metavar="MODE",
-        help="EXPERIMENTAL: blend into preset (needs a running instance of fluffyd on the network). MODE is either \"fade\" or \"wave\".")
+        help="EXPERIMENTAL: blend into preset (needs a running instance of fluffyd on the network). MODE is either \"fade\", \"wave\" or \"emp\".")
     group_cl.add_argument(
         "-l", "--list-presets", action="store_true",
         help="list locally available presets")
