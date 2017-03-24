@@ -232,18 +232,22 @@ class C4Room:
 
         return self.c4.push(cmd)
 
-    def set_colorscheme(self, colorscheme, magic=False):
+    def set_colorscheme(self, colorscheme, magic):
         """Apply colorscheme to the LED Cans in this room."""
         cmd = []
         for light in self.lights:
             if colorscheme.color_for(light.topic):
-                if magic: # Send color to ghost, but skip masters
+                if magic != None: # Send color to ghost, but skip masters
                     if light.is_master: continue
+
+                    mode_id, error = Fluffy().mode_id(magic)
+                    if error:
+                        print("Warning: unknown mode \"{}\". Using default.".format(magic))
 
                     light.set_color(colorscheme.color_for(light.topic))
                     cmd.append({
                         "topic" : "ghosts" + light.topic[light.topic.find('/'):],
-                        "payload" : light.payload
+                        "payload" : light.payload + int(mode_id).to_bytes(1, "little")
                     })
                 else:
                     light.set_color(colorscheme.color_for(light.topic))
@@ -332,7 +336,7 @@ class Keller(C4Room):
             ("Vorne", "licht/keller/vorne")
         )
     master = ""
-    lights = tuple()
+    lights = ()
 
 
 class Kitchenlight:
@@ -751,6 +755,26 @@ class ColorScheme:
         print("Wrote preset \"{}\"".format(name))
 
 
+class Fluffy:
+    """Fluffyd functions."""
+
+    modes = {
+        "fade" : 1,
+        "wave" : 4
+    }
+
+    def mode_id(self, name):
+        if name.isdecimal():
+            if int(name) in self.modes.values():
+                return (int(name), False)
+        else:
+            if name.lower() in self.modes.keys():
+                return (self.modes[name.lower()], False)
+
+        # Fallback
+        return (1, True)
+
+
 class RemotePresets:
     """Remote preset control."""
 
@@ -958,8 +982,8 @@ if __name__ == "__main__":
         "-f", "--fnordcenter", type=str, dest="f_color", metavar="PRESET",
         help="apply local colorscheme PRESET to Fnordcenter")
     group_cl.add_argument(
-        "-m", "--magic", action="store_true", default=False,
-        help="EXPERIMENTAL: blend into preset (needs a running instance of fluffyd on the network)")
+        "-m", "--magic", type=str, metavar="MODE",
+        help="EXPERIMENTAL: blend into preset (needs a running instance of fluffyd on the network). MODE is either \"fade\" or \"wave\".")
     group_cl.add_argument(
         "-l", "--list-presets", action="store_true",
         help="list locally available presets")
