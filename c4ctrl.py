@@ -178,23 +178,24 @@ class C4Room:
 
     def _interactive_light_switch(self):
         # Interactively ask for input
-        print("[{}]".format(self.name))
-        print("Please enter 0 or 1 for every lamp:")
-        for level in range(len(self.switches)):
-            print((level * '|') + ",- " + self.switches[level][0])
+        if sys.stdin.isatty():
+            print("[{}]".format(self.name))
+            print("Please enter 0 or 1 for every light:")
+            for level in range(len(self.switches)):
+                print((level * '|') + ",- " + self.switches[level][0])
 
-        # Current state of witches
-        state = ""
-        req = []
-        for t in self.switches:
-            req.append(t[1])
-        responce = self.c4.pull(req)
-        for sw in self.switches:
-            for r in responce:
-                if r.topic == sw[1]:
-                    state = state + str(int.from_bytes(r.payload,
-                            byteorder="little"))
-        print(state) # Present current state
+            # Current state of switches
+            state = ""
+            req = []
+            for t in self.switches:
+                req.append(t[1])
+            responce = self.c4.pull(req)
+            for sw in self.switches:
+                for r in responce:
+                    if r.topic == sw[1]:
+                        state = state + str(int.from_bytes(r.payload,
+                                byteorder="little"))
+            print(state) # Present current state
 
         try:
             userinput = sys.stdin.readline().rstrip('\n')
@@ -208,9 +209,14 @@ class C4Room:
         """Switch lamps in this rooms on and off."""
         if not userinput:
             userinput = self._interactive_light_switch()
+            if userinput == "": return
+
+        if not userinput.isdecimal():
+            print("You're not paying attention!", file=sys.stderr)
+            return
 
         if len(userinput) != len(self.switches):
-            if int(userinput) <= 15 and len(bin(int(userinput))) <= len(self.switches)+2:
+            if len(bin(int(userinput))) <= len(self.switches)+2:
                 # +2 because bin() returns something like 'b0...'
                 # Try to interpret as integer
                 binary = bin(int(userinput))[2:]
@@ -677,7 +683,7 @@ class ColorScheme:
             cfg_dir = self._get_cfg_dir()
             if not cfg_dir:
                 print("Error: could not load preset!")
-                return None
+                return
 
             # Expand preset name
             preset = self._expand_preset(preset)
@@ -687,7 +693,7 @@ class ColorScheme:
                 fd = open(fn)
             except OSError:
                 print("Error: could not load preset \"{}\" (file could not be accessed)!".format(preset))
-                return None
+                return
 
         # Parse the preset file
         self.mapping = {}
@@ -764,7 +770,10 @@ class ColorScheme:
         # Get current states
         c4 = C4Interface()
 
-        fd.write("# Preset \"{}\" (auto generated)\n".format(name))
+        if name == '-':
+            fd.write("# Preset (auto generated)\n".format(name))
+        else:
+            fd.write("# Preset \"{}\" (auto generated)\n".format(name))
         fd.write("# Note: \"/master\" topics override every other topic in the room.\n")
         for room in Wohnzimmer, Plenarsaal, Fnordcenter: 
             topics = []
@@ -1079,15 +1088,19 @@ if __name__ == "__main__":
     # Colorscheme
     if args.store_as:
         ColorScheme().store(args.store_as)
+    presets = {} # Store and reuse initialized presets
     if args.w_color:
-        preset = ColorScheme(autoinit=args.w_color)
-        if preset: Wohnzimmer().set_colorscheme(preset, args.magic)
+        if args.w_color not in presets:
+            presets[args.w_color] = ColorScheme(autoinit=args.w_color)
+        if presets[args.w_color]: Wohnzimmer().set_colorscheme(presets[args.w_color], args.magic)
     if args.p_color:
-        preset = ColorScheme(autoinit=args.p_color)
-        if preset: Plenarsaal().set_colorscheme(preset, args.magic)
+        if args.p_color not in presets:
+            presets[args.p_color] = ColorScheme(autoinit=args.p_color)
+        if presets[args.p_color]: Plenarsaal().set_colorscheme(presets[args.p_color], args.magic)
     if args.f_color:
-        preset = ColorScheme(autoinit=args.f_color)
-        if preset: Fnordcenter().set_colorscheme(preset, args.magic)
+        if args.f_color not in presets:
+            presets[args.f_color] = ColorScheme(autoinit=args.f_color)
+        if presets[args.f_color]: Fnordcenter().set_colorscheme(presets[args.f_color], args.magic)
     if args.list_presets:
         ColorScheme().list_available()
 
