@@ -124,7 +124,7 @@ class Dmx:
         Expand 4 bit hex code notation (eg. #f0f) and pad with template."""
         if len(color) > len(self.template): # Truncate
             print("Warning: truncating color value {} to {}".format(
-                color, color[:len(self.template)]))
+                color, color[:len(self.template)]), file=sys.stderr)
             return color[:len(self.template)]
 
         # Expand 3 char codes and codes of half the required length.
@@ -242,7 +242,8 @@ class C4Room:
 
                     mode_id, error = Fluffy().mode_id(magic)
                     if error:
-                        print("Warning: unknown mode \"{}\". Using default.".format(magic))
+                        print("Warning: unknown mode \"{}\". Using default.".format(
+                            magic), file=sys.stderr)
 
                     light.set_color(colorscheme.color_for(light.topic))
                     cmd.append({
@@ -508,7 +509,7 @@ class Kitchenlight:
         """Set to mode "text"."""
         text = text.encode("ascii", "ignore")
         if len(text) > 256: # Maximum text length
-            print("Warning: text length must not exceed 256 characters!")
+            print("Warning: text length must not exceed 256 characters!", file=sys.stderr)
             text = text[:256]
         d = bytearray(8 + len(text) + 1)
         v = memoryview(d)
@@ -585,7 +586,8 @@ class ColorScheme:
             elif quiet:
                 return None
             else:
-                print("Warning: config dir \"{}\" does not exist!".format(cfg_dir))
+                print("Warning: config dir \"{}\" does not exist!".format(
+                    cfg_dir), file=sys.stderr)
                 return None
 
         return cfg_dir
@@ -792,7 +794,8 @@ class Fluffy:
     modes = {
         "fade" : 1,
         "wave" : 4,
-        "emp" : 8
+        "emp" : 8,
+        "empulse" : 9
     }
 
     def mode_id(self, name):
