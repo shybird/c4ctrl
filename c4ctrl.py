@@ -626,13 +626,37 @@ class ColorScheme:
             color += hex(ch)[2:]*2
         return color
 
+    def _single_color(self):
+        # Check if there is a range in the color string. If yes, replace it
+        # by a random color.
+        if self.single_color.find('-', 1, -1) == -1:
+            return self.single_color
+
+        from random import randint
+        color = ""
+        for i in range(len(self.single_color)):
+            if self.single_color[i] != '-':
+                try:
+                    if self.single_color[i-1] == '-':
+                        continue
+                    elif self.single_color[i+1] == '-':
+                        continue
+                except IndexError: pass
+                color += self.single_color[i]
+            else:
+                f, t = self.single_color[i-1], self.single_color[i+1]
+                color += hex(randint(int(f, base=16), int(t, base=16)))[2:]
+
+        return color
+
     def color_for(self, topic):
         """Returns the color (hex) this ColorScheme provides for the given topic."""
         if self.mapping:
             if topic in self.mapping.keys():
                 return self.mapping[topic]
         elif self.single_color:
-            return self.single_color
+            #return self.single_color
+            return self._single_color()
         elif self.return_random_color:
             # Returning a value for master would override all other settings
             if self._topic_is_master(topic):
@@ -689,7 +713,7 @@ class ColorScheme:
 
     def from_color(self, color):
         """Derive ColorScheme from a single hex color."""
-        self.single_color = color.lstrip('#')
+        self.single_color = color.lstrip('#').strip('-')
 
     def from_random(self):
         """Derive ColorScheme from random colors."""
