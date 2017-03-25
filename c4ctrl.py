@@ -237,7 +237,7 @@ class C4Room:
         cmd = []
         for light in self.lights:
             if colorscheme.color_for(light.topic):
-                if magic != None: # Send color to ghost, but skip masters
+                if magic != "none" and magic != '0': # Send color to ghost, but skip masters
                     if light.is_master: continue
 
                     mode_id, error = Fluffy().mode_id(magic)
@@ -644,21 +644,24 @@ class ColorScheme:
 
     def from_file(self, preset):
         """Load ColorScheme from file."""
-        import os
-        cfg_dir = self._get_cfg_dir()
-        if not cfg_dir:
-            print("Error: could not load preset!")
-            return None
+        if preset == '-':
+            fd = sys.stdin
+        else:
+            import os
+            cfg_dir = self._get_cfg_dir()
+            if not cfg_dir:
+                print("Error: could not load preset!")
+                return None
 
-	# Expand preset name
-        preset = self._expand_preset(preset)
-        # Try to open the preset file
-        fn = os.path.join(cfg_dir, preset)
-        try:
-            fd = open(fn)
-        except OSError:
-            print("Error: could not load preset \"{}\" (file could not be accessed)!".format(preset))
-            return None
+            # Expand preset name
+            preset = self._expand_preset(preset)
+            # Try to open the preset file
+            fn = os.path.join(cfg_dir, preset)
+            try:
+                fd = open(fn)
+            except OSError:
+                print("Error: could not load preset \"{}\" (file could not be accessed)!".format(preset))
+                return None
 
         # Parse the preset file
         self.mapping = {}
@@ -715,19 +718,22 @@ class ColorScheme:
             print("I'm sorry Dave. I'm afraid I can't do that. The name \"{}\" is reserved. Please choose a different one.".format(name))
             return False
 
-        import os
-        cfg_dir = self._get_cfg_dir(create=True) # Create config dir if missing
+        if name == '-':
+            fd = sys.stdout
+        else:
+            import os
+            cfg_dir = self._get_cfg_dir(create=True) # Create config dir if missing
 
-        fn = os.path.join(cfg_dir, name)
-        try:
-            fd = open(fn, 'xt')
-        except FileExistsError:
-            print("A preset with this name already exists, overwrite? [y/N]",
-                    end=' ', flush=True)
-            if sys.stdin.read(1).lower() == 'y':
-                fd = open(fn, 'wt')
-            else:
-                return False
+            fn = os.path.join(cfg_dir, name)
+            try:
+                fd = open(fn, 'xt')
+            except FileExistsError:
+                print("A preset with this name already exists, overwrite? [y/N]",
+                        end=' ', flush=True)
+                if sys.stdin.read(1).lower() == 'y':
+                    fd = open(fn, 'wt')
+                else:
+                    return False
 
         # Get current states
         c4 = C4Interface()
@@ -751,8 +757,9 @@ class ColorScheme:
                         else:
                             fd.write("{} = {}\n".format(light.topic, light.color))
 
-        fd.close()
-        print("Wrote preset \"{}\"".format(name))
+        if name != '-':
+            fd.close()
+            print("Wrote preset \"{}\"".format(name))
 
 
 class Fluffy:
@@ -773,7 +780,7 @@ class Fluffy:
                 return (self.modes[name.lower()], False)
 
         # Fallback
-        return (1, True)
+        return (0, True)
 
 
 class RemotePresets:
@@ -983,8 +990,8 @@ if __name__ == "__main__":
         "-f", "--fnordcenter", type=str, dest="f_color", metavar="PRESET",
         help="apply local colorscheme PRESET to Fnordcenter")
     group_cl.add_argument(
-        "-m", "--magic", type=str, metavar="MODE",
-        help="EXPERIMENTAL: blend into preset (needs a running instance of fluffyd on the network). MODE is either \"fade\", \"wave\" or \"emp\".")
+        "-m", "--magic", type=str, default="fade", metavar="MODE",
+        help="EXPERIMENTAL: blend into preset (needs a running instance of fluffyd on the network). MODE is either \"fade\", \"wave\", \"emp\" or \"none\".")
     group_cl.add_argument(
         "-l", "--list-presets", action="store_true",
         help="list locally available presets")
