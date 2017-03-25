@@ -1015,7 +1015,7 @@ if __name__ == "__main__":
         help="list available Kitchenlight modes and their options")
     # Ambient control
     group_cl = parser.add_argument_group(title="ambient color control",
-        description="PRESET may be either a preset name (which may be abbreviated) or '#' followed by a color value in hex notation (eg. \"#ff0066\").")
+        description="PRESET may be either a preset name (which may be abbreviated), '#' followed by a color value in hex notation (eg. \"#ff0066\") or '-' to read from stdin.")
     group_cl.add_argument(
         "-w", "--wohnzimmer", type=str, dest="w_color", metavar="PRESET",
         help="apply local colorscheme PRESET to Wohnzimmer")
@@ -1033,7 +1033,22 @@ if __name__ == "__main__":
         help="list locally available presets")
     group_cl.add_argument(
         "-o", "--store-preset", type=str, dest="store_as", metavar="NAME",
-        help="store current state as preset NAME")
+        help="store current state as preset NAME ('-' to write to stdout)")
+    # Switch control
+    group_sw = parser.add_argument_group(title="light switch control",
+        description="BINARY_CODE is a string of 0s or 1s for every light in the room. Accepts integers also. Will show some information and ask for input if missing.")
+    group_sw.add_argument(
+        "-W", nargs='?', dest="w_switch", const="", metavar="BINARY_CODE",
+        help="switch lights in Wohnzimmer on/off")
+    group_sw.add_argument(
+        "-P", nargs='?', dest="p_switch", const="", metavar="BINARY_CODE",
+        help="switch lights in Plenarsaal on/off")
+    group_sw.add_argument(
+        "-F", nargs='?', dest="f_switch", const="", metavar="BINARY_CODE",
+        help="switch lights in Fnordcentter on/off")
+    group_sw.add_argument(
+        "-K", nargs='?', dest="k_switch", const="", metavar="BINARY_CODE",
+        help="switch lights in Keller on/off")
     # Remote presets
     group_rp = parser.add_argument_group(title="remote preset functions",
         description="Available room names are \"wohnzimmer\", \"plenar\", \"fnord\" and \"keller\". Preset and room names may be abbreviated.")
@@ -1043,21 +1058,6 @@ if __name__ == "__main__":
     group_rp.add_argument(
         "-R", "--list-remote", nargs='?', const="global", metavar="ROOM",
         help="list remote presets for ROOM")
-    # Switch control
-    group_sw = parser.add_argument_group(title="light switch control",
-        description="The optional DIGIT_CODE is a string of 0s or 1s for every light in the room. Works interactively if missing.")
-    group_sw.add_argument(
-        "-W", nargs='?', dest="w_switch", const="", metavar="DIGIT_CODE",
-        help="switch lights in Wohnzimmer on/off")
-    group_sw.add_argument(
-        "-P", nargs='?', dest="p_switch", const="", metavar="DIGIT_CODE",
-        help="switch lights in Plenarsaal on/off")
-    group_sw.add_argument(
-        "-F", nargs='?', dest="f_switch", const="", metavar="DIGIT_CODE",
-        help="switch lights in Fnordcentter on/off")
-    group_sw.add_argument(
-        "-K", nargs='?', dest="k_switch", const="", metavar="DIGIT_CODE",
-        help="switch lights in Keller on/off")
     args = parser.parse_args()
 
     # Debug, gate, status and shutdown
@@ -1104,6 +1104,16 @@ if __name__ == "__main__":
     if args.list_presets:
         ColorScheme().list_available()
 
+    # Light switches
+    if args.w_switch != None:
+        Wohnzimmer().light_switch(args.w_switch)
+    if args.p_switch != None:
+        Plenarsaal().light_switch(args.p_switch)
+    if args.f_switch != None:
+        Fnordcenter().light_switch(args.f_switch)
+    if args.k_switch != None:
+        Keller().light_switch(args.k_switch)
+
     # Remote presets
     if args.list_remote:
         RemotePresets().list_available(args.list_remote.lower())
@@ -1114,16 +1124,6 @@ if __name__ == "__main__":
         else:
             RemotePresets().apply_preset(remote_opts[0].strip(),
                     remote_opts[1].lower().split(','))
-
-    # Light switches
-    if args.w_switch != None:
-        Wohnzimmer().light_switch(args.w_switch)
-    if args.p_switch != None:
-        Plenarsaal().light_switch(args.p_switch)
-    if args.f_switch != None:
-        Fnordcenter().light_switch(args.f_switch)
-    if args.k_switch != None:
-        Keller().light_switch(args.k_switch)
 
     # No or no useful command line options?
     if len(sys.argv) <= 1 or len(sys.argv) == 2 and args.debug:
