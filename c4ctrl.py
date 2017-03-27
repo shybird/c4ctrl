@@ -122,9 +122,8 @@ class Dmx:
         """Merge hex color value into hex template.
 
         Expand 4 bit hex code notation (eg. #f0f) and pad with template."""
-        if len(color) > len(self.template): # Truncate
-            print("Warning: truncating color value {} to {}".format(
-                color, color[:len(self.template)]), file=sys.stderr)
+        if len(color) > len(self.template):
+            # Silently truncate
             return color[:len(self.template)]
 
         # Expand 3 char codes and codes of half the required length.
