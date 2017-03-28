@@ -47,7 +47,11 @@ function C4ctrl(cmd, ...)
 
   if stridx("get", a:cmd) == 0
     " Read current status into new buffer
-    new
+    if getbufinfo("%")[0].changed
+      vnew
+    else
+      enew
+    endif
     set filetype=conf
     silent execute "0 read !" s:c4ctrl "-o -"
 
@@ -67,7 +71,13 @@ function C4ctrl(cmd, ...)
       echoerr "Error: could not open file" s:fn
       return
     endif
-    execute "new" fnameescape(s:fn)
+
+    if getbufinfo("%")[0].changed
+      vnew
+    else
+      enew
+    endif
+    execute "edit" fnameescape(s:fn)
 
   elseif stridx("set", a:cmd) == 0
     " Set preset from current buffer
