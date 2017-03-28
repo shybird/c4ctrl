@@ -1,10 +1,10 @@
 " Vim plugin to use some functionality of c4ctrl from within Vim.
 "
-" Last Change: 2017 Mar 27
+" Last Change: 2017 Mar 28
 " Maintainer: Shy
 " License: This file is placed in the public domain.
 "
-" Usage: C4ctrl [edit $name] [gate] [get] [set [w][p][f]] [text]
+" Usage: C4ctrl [get] [open $preset] [set [w][p][f]] [text] [write]
 
 if exists("g:loaded_c4ctrl")
   finish
@@ -34,6 +34,7 @@ endfunction
 function C4ctrl(cmd, ...)
   let s:c4ctrl = "c4ctrl"
 
+  " Check if we can excute c4ctrl
   if !executable(s:c4ctrl)
     " Maybe we judt need to add .py to the command?
     if executable(s:c4ctrl.".py")
@@ -44,7 +45,13 @@ function C4ctrl(cmd, ...)
     endif
   endif
 
-  if stridx("edit", a:cmd) == 0
+  if stridx("get", a:cmd) == 0
+    " Read current status into new buffer
+    new
+    set filetype=conf
+    silent execute "0 read !" s:c4ctrl "-o -"
+
+  elseif stridx("open", a:cmd) == 0
     " Edit an exiting preset
     if !exists("a:1")
       echo "Missing filename!"
@@ -61,16 +68,6 @@ function C4ctrl(cmd, ...)
       return
     endif
     execute "new" fnameescape(s:fn)
-
-  elseif stridx("gate", a:cmd) == 0
-    " Open gate
-    silent let s:ret = system(s:c4ctrl." -g")
-
-  elseif stridx("get", a:cmd) == 0
-    " Read current status into new buffer
-    new
-    set filetype=conf
-    silent execute "0 read !" s:c4ctrl "-o -"
 
   elseif stridx("set", a:cmd) == 0
     " Set preset from current buffer
@@ -104,11 +101,39 @@ function C4ctrl(cmd, ...)
     let s:ret = system(printf("%s -k text,%s", s:c4ctrl, shellescape(s:txt)))
 
     unlet! s:txt
+
+  elseif stridx("write", substitute(a:cmd, "!$", "", "")) == 0
+    " Save preset to config directory
+    if !exists("a:1")
+      echo "Missing filename!"
+      return
+    endif
+
+    let s:cfgdir = s:FindConfigDir()
+    if s:cfgdir == ""
+      return
+    endif
+
+    let s:fn = s:cfgdir . a:1
+
+    if strridx(a:cmd, "!") + 1 == len(a:cmd)
+      " Force if a ! was appended to the command
+      execute "saveas!" fnameescape(s:fn)
+    else
+      execute "saveas" fnameescape(s:fn)
+    endif
+
+  else
+    " Unknown command oO
+    echo "Unknown command:" a:cmd
+    echo "Valid commands are get, open, set, text and write"
   endif
 
   " Echo return if shell exited with an error
   if v:shell_error
-    echoerr s:ret
+    if exists("s:ret")
+      echoerr s:ret
+    endif
   endif
 
   unlet! s:c4ctrl s:ret s:cfgdir
@@ -116,23 +141,27 @@ endfunction
 
 " Custom command line completion
 function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
-  if stridx(a:CmdLine, "edit") != -1
+  if stridx(a:CmdLine, "open") != -1
     let s:cfgdir = s:FindConfigDir()
     if s:cfgdir == ""
       return ""
     endif
     return join(map(glob(s:cfgdir."*", 0, 1), "fnamemodify(v:val, ':t')"), "\n")
-  elseif stridx(a:CmdLine, "gate") != -1
-    return ""
   elseif stridx(a:CmdLine, "get") != -1
     return ""
   elseif stridx(a:CmdLine, "set") != -1
     return "w\np\nf"
   elseif stridx(a:CmdLine, "text") != -1
     return ""
+  elseif stridx(a:CmdLine, "write") != -1
+    let s:cfgdir = s:FindConfigDir()
+    if s:cfgdir == ""
+      return ""
+    endif
+    return join(map(glob(s:cfgdir."*", 0, 1), "fnamemodify(v:val, ':t')"), "\n")
   endif
 
-  return "edit\ngate\nget\nset\ntext"
+  return "get\nopen\nset\ntext\nwrite"
 endfunction
 
 if !exists(":C4ctrl")
