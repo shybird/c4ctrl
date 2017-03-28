@@ -243,7 +243,7 @@ class C4Room:
         for light in self.lights:
             if colorscheme.color_for(light.topic):
                 if magic != "none" and magic != '0': # Send color to ghost, but skip masters
-                    if light.is_master: continue
+                    #if light.is_master: continue
 
                     mode_id, error = Fluffy().mode_id(magic)
                     if error:
@@ -658,14 +658,17 @@ class ColorScheme:
 
     def color_for(self, topic):
         """Returns the color (hex) this ColorScheme provides for the given topic."""
+        # We need to take care not to return colors for both "normal" topics
+        # and masters, as setting masters would override other settings
         if self.mapping:
             if topic in self.mapping.keys():
                 return self.mapping[topic]
         elif self.single_color:
-            #return self.single_color
-            return self._single_color()
+            if self._topic_is_master(topic):
+                return None
+            else:
+                return self._single_color()
         elif self.return_random_color:
-            # Returning a value for master would override all other settings
             if self._topic_is_master(topic):
                 return None
             else:
@@ -712,7 +715,7 @@ class ColorScheme:
             # Validate hex code
             for c in v.lower():
                 if c not in "0123456789abcdef":
-                    print("Error: invalid color code \"{}\" in preset \"{}\"!".format(v, preset))
+                    print("Error: invalid color code \"{}\" in preset \"{}\"!".format(v, preset), file=sys.stderr)
                     sys.exit(1)
             self.mapping[k] = v
 
@@ -770,14 +773,20 @@ class ColorScheme:
         c4 = C4Interface()
 
         if name == '-':
-            fd.write("# Preset (auto generated)\n".format(name))
+            fd.write("# c4ctrl preset (auto generated)\n".format(name))
         else:
-            fd.write("# Preset \"{}\" (auto generated)\n".format(name))
-        fd.write("# Note: \"/master\" topics override every other topic in the room.\n")
+            fd.write("# c4ctrl preset \"{}\" (auto generated)\n".format(name))
+        fd.write("#\n")
+        fd.write("# Note: Topics ending with \"/master\" override all other topics in a room.\n")
+        fd.write("#       All spaces will be stripped and lines beginning with \'#\' ignored.\n")
         for room in Wohnzimmer, Plenarsaal, Fnordcenter: 
             topics = []
+            max_topic_len = 0
+
             for light in room.lights:
                 topics.append(light.topic)
+                if len(light.topic) > max_topic_len:
+                    max_topic_len = len(light.topic)
 
             responce = c4.pull(topics)
             fd.write("\n# {}\n".format(room.name))
@@ -785,11 +794,16 @@ class ColorScheme:
                 for r in responce:
                     if r.topic == light.topic:
                         light.set_color(r.payload.hex())
+                        # Format payload more nicely
+                        color = light.color
+                        if len(color) > 6:
+                            color = color[:6] + ' ' + color[6:]
+                        topic = light.topic.ljust(max_topic_len)
                         # Out comment master, as it would override everything else
                         if self._topic_is_master(r.topic):
-                            fd.write("#{} = {}\n".format(light.topic, light.color))
+                            fd.write("#{} = {}\n".format(topic, color))
                         else:
-                            fd.write("{} = {}\n".format(light.topic, light.color))
+                            fd.write("{} = {}\n".format(topic, color))
 
         if name != '-':
             fd.close()
