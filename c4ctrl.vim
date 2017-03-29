@@ -4,13 +4,15 @@
 " Maintainer: Shy
 " License: This file is placed in the public domain.
 "
-" Usage: C4ctrl [get] [open $preset] [set [w][p][f]] [text] [write]
+" Usage: C4ctrl [get | open PRESET | set [w] [p] [f] [-magic MODE] |
+"                text | write]
 
 if exists("g:loaded_c4ctrl")
   finish
 endif
 let g:loaded_c4ctrl = 1
 
+let s:Name = "C4ctrl"
 
 function s:FindConfigDir()
   " Run only once
@@ -49,8 +51,6 @@ function C4ctrl(cmd, ...)
     " Read current status into new buffer
     if getbufinfo("%")[0].changed
       vnew
-    else
-      enew
     endif
     set filetype=conf
     silent execute "0 read !" s:c4ctrl "-o -"
@@ -74,8 +74,6 @@ function C4ctrl(cmd, ...)
 
     if getbufinfo("%")[0].changed
       vnew
-    else
-      enew
     endif
     execute "edit" fnameescape(s:fn)
 
@@ -88,21 +86,26 @@ function C4ctrl(cmd, ...)
       let s:cmd = s:cmd . " -w - -p - -f -"
     endif
 
-    for s:arg in a:000
-      " Ignore options which are longer than 1 char
-      if strchars(s:arg) != 1
-        continue
+    for s:i in range(a:0)
+      let  s:arg = a:000[s:i]
+      if strchars(s:arg) == 1
+        if stridx("wpf", s:arg) != -1
+          let s:cmd = printf("%s -%s -", s:cmd, s:arg)
+        endif
+      elseif stridx("-magic", s:arg) == 0
+        try
+          let s:cmd = printf("%s --magic %s", s:cmd, a:000[s:i+1])
+        catch /^Vim\%((\a\+)\)\=:E684/
+          " Catching list index out of range
+          echoerr "Option -magic expects one argument!"
+          continue
+        endtry
       endif
-      " Ignore unknown chars 
-      if stridx("wpf", s:arg) == -1
-        continue
-      endif
-      let s:cmd = printf("%s -%s -", s:cmd, s:arg)
     endfor
 
     silent let s:ret = system(s:cmd, bufnr("%"))
 
-    unlet! s:arg s:cmd s:txt
+    unlet! s:arg s:i s:cmd s:txt
 
   elseif stridx("text", a:cmd) == 0
     " Send line under the cursor to the Kitchenlight
@@ -127,7 +130,7 @@ function C4ctrl(cmd, ...)
     let s:fn = s:cfgdir . a:1
 
     if strridx(a:cmd, "!") + 1 == len(a:cmd)
-      " Force if a ! was appended to the command
+      " Force if a '!' was appended to the command
       execute "saveas!" fnameescape(s:fn)
     else
       execute "saveas" fnameescape(s:fn)
@@ -151,30 +154,65 @@ endfunction
 
 " Custom command line completion
 function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
-  if stridx(a:CmdLine, "open") != -1
-    let s:cfgdir = s:FindConfigDir()
-    if s:cfgdir == ""
-      return ""
-    endif
-    return join(map(glob(s:cfgdir."*", 0, 1), "fnamemodify(v:val, ':t')"), "\n")
-  elseif stridx(a:CmdLine, "get") != -1
-    return ""
-  elseif stridx(a:CmdLine, "set") != -1
-    return "w\np\nf"
-  elseif stridx(a:CmdLine, "text") != -1
-    return ""
-  elseif stridx(a:CmdLine, "write") != -1
-    let s:cfgdir = s:FindConfigDir()
-    if s:cfgdir == ""
-      return ""
-    endif
-    return join(map(glob(s:cfgdir."*", 0, 1), "fnamemodify(v:val, ':t')"), "\n")
-  endif
+  " A list of current cmd line arguments excluding leading commands like
+  " :vertical etc.
+  let s:relCmdLine = split(a:CmdLine)
+  let s:relCmdLine = s:relCmdLine[index(s:relCmdLine, s:Name):]
 
-  return "get\nopen\nset\ntext\nwrite"
+  if stridx("open", get(s:relCmdLine, 1)) == 0
+    if a:ArgLead != ""
+      return "open"
+    elseif len(s:relCmdLine) > 2 " Do not return more than one name
+      return ""
+    endif
+    let s:cfgdir = s:FindConfigDir()
+    if s:cfgdir == ""
+      return ""
+    endif
+    return join(map(glob(s:cfgdir."*", 0, 1), "fnamemodify(v:val, ':t')"), "\n")
+
+  elseif stridx("get", get(s:relCmdLine, 1)) == 0
+    if a:ArgLead != ""
+      return "get"
+    endif
+    return ""
+
+  elseif stridx("set", get(s:relCmdLine, 1)) == 0
+    if a:ArgLead != ""
+      return "set"
+    endif
+    if stridx("-magic", get(s:relCmdLine, -1)) == 0
+      return "none\nemp\nfade\nflash\nwave"
+    endif
+    return "w\np\nf\n-magic"
+
+  elseif stridx("text", get(s:relCmdLine, 1)) == 0
+    if a:ArgLead != ""
+      return "text"
+    endif
+    return ""
+
+  elseif stridx("write", get(s:relCmdLine, 1)) == 0
+    if a:ArgLead != ""
+      return "write"
+    elseif len(s:relCmdLine) > 2 " Do not return more than one name
+      return ""
+    endif
+    let s:cfgdir = s:FindConfigDir()
+    if s:cfgdir == ""
+      return ""
+    endif
+    return join(map(glob(s:cfgdir."*", 0, 1), "fnamemodify(v:val, ':t')"), "\n")
+
+  elseif get(s:relCmdLine, -1) == s:Name
+    unlet s:relCmdLine
+    return "get\nopen\nset\ntext\nwrite"
+  else
+    return ""
+  endif
 endfunction
 
-if !exists(":C4ctrl")
-  command -nargs=+ -complete=custom,s:C4ctrlCompletion C4ctrl call C4ctrl(<f-args>)
+if !exists(":".s:Name)
+  execute "command -nargs=+ -complete=custom,s:C4ctrlCompletion" s:Name "call C4ctrl(<f-args>)"
 endif
 
