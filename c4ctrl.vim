@@ -12,7 +12,6 @@ if exists("g:loaded_c4ctrl")
 endif
 let g:loaded_c4ctrl = 1
 
-let s:Name = "C4ctrl"
 
 function s:FindConfigDir()
   " Run only once
@@ -154,65 +153,70 @@ endfunction
 
 " Custom command line completion
 function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
+  let s:Name = "C4ctrl"
   " A list of current cmd line arguments excluding leading commands like
   " :vertical etc.
   let s:relCmdLine = split(a:CmdLine)
   let s:relCmdLine = s:relCmdLine[index(s:relCmdLine, s:Name):]
 
-  if stridx("open", get(s:relCmdLine, 1)) == 0
-    if a:ArgLead != ""
-      return "open"
-    elseif len(s:relCmdLine) > 2 " Do not return more than one name
+  try " Just for the clean up in the finally statement
+    if stridx("open", get(s:relCmdLine, 1)) == 0
+      if a:ArgLead != ""
+        return "open"
+      elseif len(s:relCmdLine) > 2 " Do not return more than one name
+        return ""
+      endif
+      let s:cfgdir = s:FindConfigDir()
+      if s:cfgdir == ""
+        return ""
+      endif
+      return join(map(glob(s:cfgdir."*", 0, 1), "fnamemodify(v:val, ':t')"), "\n")
+
+    elseif stridx("get", get(s:relCmdLine, 1)) == 0
+      if a:ArgLead != ""
+        return "get"
+      endif
+      return ""
+
+    elseif stridx("set", get(s:relCmdLine, 1)) == 0
+      if a:ArgLead != ""
+        return "set"
+      endif
+      if stridx("-magic", get(s:relCmdLine, -1)) == 0
+        return "none\nemp\nfade\nflash\nwave"
+      endif
+      return "w\np\nf\n-magic"
+
+    elseif stridx("text", get(s:relCmdLine, 1)) == 0
+      if a:ArgLead != ""
+        return "text"
+      endif
+      return ""
+
+    elseif stridx("write", get(s:relCmdLine, 1)) == 0
+      if a:ArgLead != ""
+        return "write"
+      elseif len(s:relCmdLine) > 2 " Do not return more than one name
+        return ""
+      endif
+      let s:cfgdir = s:FindConfigDir()
+      if s:cfgdir == ""
+        return ""
+      endif
+      return join(map(glob(s:cfgdir."*", 0, 1), "fnamemodify(v:val, ':t')"), "\n")
+
+    elseif get(s:relCmdLine, -1) == s:Name
+      return "get\nopen\nset\ntext\nwrite"
+    else
       return ""
     endif
-    let s:cfgdir = s:FindConfigDir()
-    if s:cfgdir == ""
-      return ""
-    endif
-    return join(map(glob(s:cfgdir."*", 0, 1), "fnamemodify(v:val, ':t')"), "\n")
 
-  elseif stridx("get", get(s:relCmdLine, 1)) == 0
-    if a:ArgLead != ""
-      return "get"
-    endif
-    return ""
-
-  elseif stridx("set", get(s:relCmdLine, 1)) == 0
-    if a:ArgLead != ""
-      return "set"
-    endif
-    if stridx("-magic", get(s:relCmdLine, -1)) == 0
-      return "none\nemp\nfade\nflash\nwave"
-    endif
-    return "w\np\nf\n-magic"
-
-  elseif stridx("text", get(s:relCmdLine, 1)) == 0
-    if a:ArgLead != ""
-      return "text"
-    endif
-    return ""
-
-  elseif stridx("write", get(s:relCmdLine, 1)) == 0
-    if a:ArgLead != ""
-      return "write"
-    elseif len(s:relCmdLine) > 2 " Do not return more than one name
-      return ""
-    endif
-    let s:cfgdir = s:FindConfigDir()
-    if s:cfgdir == ""
-      return ""
-    endif
-    return join(map(glob(s:cfgdir."*", 0, 1), "fnamemodify(v:val, ':t')"), "\n")
-
-  elseif get(s:relCmdLine, -1) == s:Name
-    unlet s:relCmdLine
-    return "get\nopen\nset\ntext\nwrite"
-  else
-    return ""
-  endif
+  finally
+    unlet! s:relCmdLine s:Name s:cfgdir
+  endtry
 endfunction
 
-if !exists(":".s:Name)
-  execute "command -nargs=+ -complete=custom,s:C4ctrlCompletion" s:Name "call C4ctrl(<f-args>)"
+if !exists(":C4ctrl")
+  command -nargs=+ -complete=custom,s:C4ctrlCompletion C4ctrl call C4ctrl(<f-args>)
 endif
 
