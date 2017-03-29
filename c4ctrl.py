@@ -242,9 +242,8 @@ class C4Room:
         cmd = []
         for light in self.lights:
             if colorscheme.color_for(light.topic):
-                if magic != "none" and magic != '0': # Send color to ghost, but skip masters
-                    #if light.is_master: continue
-
+                if magic != "none" and magic != '0':
+                    # Send color to ghost instead of the "real" light
                     mode_id, error = Fluffy().mode_id(magic)
                     if error:
                         print("Warning: unknown mode \"{}\". Using default.".format(
@@ -252,8 +251,8 @@ class C4Room:
 
                     light.set_color(colorscheme.color_for(light.topic))
                     cmd.append({
-                        "topic" : "ghosts" + light.topic[light.topic.find('/'):],
-                        "payload" : light.payload + int(mode_id).to_bytes(1, "little")
+                        "topic" : Fluffy().ghost_of(light.topic),
+                        "payload" : Fluffy().ghostly_payload(light.payload, mode_id)
                     })
                 else:
                     light.set_color(colorscheme.color_for(light.topic))
@@ -816,9 +815,17 @@ class Fluffy:
     modes = {
         "fade" : 1,
         "wave" : 4,
-        "emp" : 8,
-        "empulse" : 9
+        "pulse" : 8,
+        "emp" : 9,
+        "flash" : 12
     }
+
+    def ghost_of(self, topic):
+        # Return the ghost topic of topic
+        return "ghosts" + topic[topic.find('/'):]
+
+    def ghostly_payload(self, payload, mode_id):
+        return payload + int(mode_id).to_bytes(1, "little")
 
     def mode_id(self, name):
         if name.isdecimal():
@@ -1040,7 +1047,7 @@ if __name__ == "__main__":
         help="apply local colorscheme PRESET to Fnordcenter")
     group_cl.add_argument(
         "-m", "--magic", type=str, default="fade", metavar="MODE",
-        help="EXPERIMENTAL: blend into preset (needs a running instance of fluffyd on the network). MODE is either \"fade\", \"wave\", \"emp\" or \"none\".")
+        help="EXPERIMENTAL: blend into preset (needs a running instance of fluffyd on the network). MODE is either \"fade\", \"wave\", \"emp[1]\", \"flash\" or \"none\".")
     group_cl.add_argument(
         "-l", "--list-presets", action="store_true",
         help="list locally available presets")
