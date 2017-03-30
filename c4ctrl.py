@@ -251,7 +251,7 @@ class C4Room:
 
                     light.set_color(colorscheme.color_for(light.topic))
                     cmd.append({
-                        "topic" : Fluffy().ghost_of(light.topic),
+                        "topic" : Fluffy().ghostly_topic(light.topic),
                         "payload" : Fluffy().ghostly_payload(light.payload, mode_id)
                     })
                 else:
@@ -813,6 +813,7 @@ class Fluffy:
     """Fluffyd functions."""
 
     modes = {
+        # Fluffy modes and their id's
         "fade" : 1,
         "wave" : 4,
         "pulse" : 8,
@@ -820,7 +821,7 @@ class Fluffy:
         "flash" : 12
     }
 
-    def ghost_of(self, topic):
+    def ghostly_topic(self, topic):
         # Return the ghost topic of topic
         return "ghosts" + topic[topic.find('/'):]
 
@@ -828,9 +829,9 @@ class Fluffy:
         return payload + int(mode_id).to_bytes(1, "little")
 
     def mode_id(self, name):
-        if name.isdecimal():
-            if int(name) in self.modes.values():
-                return (int(name), False)
+        if name.isdecimal() and int(name) <= 255:
+            # Let's trust the user with this
+            return (int(name), False)
         else:
             if name.lower() in self.modes.keys():
                 return (self.modes[name.lower()], False)
@@ -1047,7 +1048,7 @@ if __name__ == "__main__":
         help="apply local colorscheme PRESET to Fnordcenter")
     group_cl.add_argument(
         "-m", "--magic", type=str, default="fade", metavar="MODE",
-        help="EXPERIMENTAL: blend into preset (needs a running instance of fluffyd on the network). MODE is either \"fade\", \"wave\", \"emp[1]\", \"flash\" or \"none\".")
+        help="EXPERIMENTAL: blend into preset (needs a running instance of fluffyd on the network). MODE is either \"fade\", \"wave\", \"pulse\", \"emp\", \"flash\" or \"none\".")
     group_cl.add_argument(
         "-l", "--list-presets", action="store_true",
         help="list locally available presets")
@@ -1056,7 +1057,7 @@ if __name__ == "__main__":
         help="store current state as preset NAME ('-' to write to stdout)")
     # Switch control
     group_sw = parser.add_argument_group(title="light switch control",
-        description="BINARY_CODE is a string of 0s or 1s for every light in the room. Accepts integers also. Will show some information and ask for input if missing.")
+        description="BINARY_CODE is a string of 0s or 1s for every light in the room. Accepts integers also. Will show some information and ask for input if omitted.")
     group_sw.add_argument(
         "-W", nargs='?', dest="w_switch", const="", metavar="BINARY_CODE",
         help="switch lights in Wohnzimmer on/off")
