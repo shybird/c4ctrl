@@ -340,7 +340,7 @@ class Keller(C4Room):
             ("Innen", "licht/keller/innen"),
             ("Vorne", "licht/keller/vorne")
         )
-    master = ""
+    master = None
     lights = ()
 
 
