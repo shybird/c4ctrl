@@ -162,8 +162,11 @@ function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
   try " Just for cleaning up in the finally statement
     if stridx("open", get(s:relCmdLine, 1)) == 0
       if a:ArgLead != ""
-        return "open"
-      elseif len(s:relCmdLine) > 2 " Do not return more than one name
+        if len(s:relCmdLine) == 2
+          return "open"
+        endif
+      elseif len(s:relCmdLine) > 2
+        " Do not return more than one file name
         return ""
       endif
       let s:cfgdir = s:FindConfigDir()
@@ -197,8 +200,11 @@ function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
 
     elseif stridx("write", get(s:relCmdLine, 1)) == 0
       if a:ArgLead != ""
-        return "write"
-      elseif len(s:relCmdLine) > 2 " Do not return more than one name
+        if len(s:relCmdLine) == 2 && a:ArgLead != ""
+          return "write"
+        endif
+      elseif len(s:relCmdLine) > 2 && a:ArgLead == ""
+        " Do not return more than one file name
         return ""
       endif
       let s:cfgdir = s:FindConfigDir()
