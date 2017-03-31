@@ -159,7 +159,7 @@ function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
   let s:relCmdLine = split(a:CmdLine)
   let s:relCmdLine = s:relCmdLine[index(s:relCmdLine, s:Name):]
 
-  try " Just for the clean up in the finally statement
+  try " Just for cleaning up in the finally statement
     if stridx("open", get(s:relCmdLine, 1)) == 0
       if a:ArgLead != ""
         return "open"
@@ -180,10 +180,12 @@ function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
 
     elseif stridx("set", get(s:relCmdLine, 1)) == 0
       if a:ArgLead != ""
-        return "set"
-      endif
-      if stridx("-magic", get(s:relCmdLine, -1)) == 0
-        return "none\nemp\nfade\nflash\nwave"
+        if stridx("-magic", get(s:relCmdLine, -2)) == 0
+          return "none\nemp\nfade\nflash\npulse\nwave"
+        endif
+        return "set\n-magic"
+      elseif stridx("-magic", get(s:relCmdLine, -1)) == 0
+        return "none\nemp\nfade\nflash\npulse\nwave"
       endif
       return "w\np\nf\n-magic"
 
