@@ -17,13 +17,13 @@ class C4Interface():
         # Set a default topic
         if topic: self.topic = topic
 
-    def push(self, cmd, topic=None, retain=True):
+    def push(self, cmd, topic=None, retain=None):
         """Send cmd to topic via the MQTT broker."""
         from paho.mqtt import publish
 
         # Overwrite defaults
         if topic: self.topic = topic
-        if retain == False: self.retain = retain
+        if retain != None: self.retain = retain
 
         if type(cmd) == list:
             # Add <qos> and <retain> to every message
@@ -261,8 +261,12 @@ class C4Room:
                         "payload" : light.payload
                     })
 
-        # Do not retain "magic" messages
-        return self.c4.push(cmd, retain=(not magic))
+        if cmd == []: return
+
+        if magic: # Do not retain "magic" messages
+          return self.c4.push(cmd, retain=(not magic))
+        else:
+          return self.c4.push(cmd)
 
 
 class Wohnzimmer(C4Room):
@@ -663,14 +667,10 @@ class ColorScheme:
             if topic in self.mapping.keys():
                 return self.mapping[topic]
         elif self.single_color:
-            if self._topic_is_master(topic):
-                return None
-            else:
+            if not self._topic_is_master(topic):
                 return self._single_color()
         elif self.return_random_color:
-            if self._topic_is_master(topic):
-                return None
-            else:
+            if not self._topic_is_master(topic):
                 return self._random_color()
         # Fallback
         return None
