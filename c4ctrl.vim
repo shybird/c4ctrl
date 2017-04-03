@@ -1,7 +1,7 @@
 " This Vim plugin makes some functionality of the c4ctrl utility available
 " from within Vim.
 "
-" Last Change: 2017 Mar 29
+" Last Change: 2017 Apr 03
 " Maintainer: Shy
 " License: This file is placed in the public domain.
 "
@@ -78,7 +78,8 @@ function C4ctrl(command, ...)
     " Read current status into new buffer "
     " *********************************** "
     if getbufinfo("%")[0].changed
-      new
+      " Spawn a new window if the current buffer has changes
+      vnew
     endif
     silent execute "0 read !" s:c4ctrl "-o -"
     call s:SynHighlight()
@@ -103,12 +104,13 @@ function C4ctrl(command, ...)
     endif
 
     if getbufinfo("%")[0].changed
-      new
+      " Spawn a new window if the current buffer has changes
+      vnew
     endif
     execute "edit" fnameescape(s:filename)
     call s:SynHighlight()
 
-    unlet! s:filename
+    unlet s:filename
 
   elseif stridx("set", a:command) == 0
     " ****************************** "
@@ -177,7 +179,7 @@ function C4ctrl(command, ...)
       execute "saveas" fnameescape(s:filename)
     endif
 
-    unlet! s:filename
+    unlet s:filename
 
   else
     " ****************** "
