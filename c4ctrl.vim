@@ -40,13 +40,17 @@ endfunction
 
 
 function C4ctrl(command, ...)
-  " Valid commands are get,open,set,text and write
+  " ********************************************************************* "
+  " Make some functionality of the 'c4ctrl' command line script available "
+  " from within Vim.                                                      "
+  " Available commands are 'get', 'open', 'set', 'text' and 'write'.      "
+  " ********************************************************************* "
 
-  " Our name
+  " Name of the executable.
   let s:c4ctrl = "c4ctrl"
 
   " This function will be called after a preset file has been loaded
-  " into the buffer.k
+  " into the buffer.
   function s:SynHighlight()
     syn match Identifier "^[ \t]*[0-9a-zA-Z/]*"
     " Match values like 03f with optional space between
@@ -59,11 +63,12 @@ function C4ctrl(command, ...)
   " Check if we can excute c4ctrl or c4ctrl.py and modify the variable
   " s:c4ctrl accordingly
   if !executable(s:c4ctrl)
-    " Maybe we judt need to add .py to the command?
+    " Maybe we just need to add .py to the command?
     if executable(s:c4ctrl.".py")
-      let s:c4ctrl = s:c4ctrl.".py"
+      let s:c4ctrl .= ".py"
     else
       echoerr "Executable not found! Please put \"".s:c4ctrl."\" into your $PATH."
+      unlet s:c4ctrl
       return
     endif
   endif
@@ -73,7 +78,7 @@ function C4ctrl(command, ...)
     " Read current status into new buffer "
     " *********************************** "
     if getbufinfo("%")[0].changed
-      vnew
+      new
     endif
     silent execute "0 read !" s:c4ctrl "-o -"
     call s:SynHighlight()
@@ -91,17 +96,19 @@ function C4ctrl(command, ...)
     if s:cfgdir == ""
       return
     endif
-    let s:fn = s:cfgdir . a:1
-    if !filereadable(s:fn)
-      echoerr "Error: could not open file" s:fn
+    let s:filename = s:cfgdir . a:1
+    if !filereadable(s:filename)
+      echoerr "Error: could not open file" s:filename
       return
     endif
 
     if getbufinfo("%")[0].changed
-      vnew
+      new
     endif
-    execute "edit" fnameescape(s:fn)
+    execute "edit" fnameescape(s:filename)
     call s:SynHighlight()
+
+    unlet! s:filename
 
   elseif stridx("set", a:command) == 0
     " ****************************** "
@@ -112,7 +119,7 @@ function C4ctrl(command, ...)
     let s:command_line = s:c4ctrl
     if a:0 == 0
       " If no room is given, set colors for all rooms
-      let s:command_line = s:command_line . " -w - -p - -f -"
+      let s:command_line .= " -w - -p - -f -"
     endif
 
     for s:i in range(a:0)
@@ -161,14 +168,16 @@ function C4ctrl(command, ...)
       return
     endif
 
-    let s:fn = s:cfgdir . a:1
+    let s:filename = s:cfgdir . a:1
 
     if strridx(a:command, "!") + 1 == len(a:command)
       " Force if a '!' was appended to the command
-      execute "saveas!" fnameescape(s:fn)
+      execute "saveas!" fnameescape(s:filename)
     else
-      execute "saveas" fnameescape(s:fn)
+      execute "saveas" fnameescape(s:filename)
     endif
+
+    unlet! s:filename
 
   else
     " ****************** "
