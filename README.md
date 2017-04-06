@@ -7,14 +7,14 @@ Command line client and utilities for AutoC4.
 
 ### Usage
 ```
-c4ctrl.py -h
+$ c4ctrl.py -h
 ```
 
 ## kitchentext.py
 Kitchenlight utility script.
 
 ```
-kitchentext.py -h
+$ kitchentext.py -h
 ```
 
 ## c4ctrl.vim
