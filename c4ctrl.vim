@@ -5,7 +5,7 @@
 " Maintainer: Shy
 " License: This file is placed in the public domain.
 "
-" Usage: C4ctrl [get | open PRESET | set [w] [p] [f] [-magic MODE] |
+" Usage: C4ctrl [get | open PRESET | set [w] [p] [f] [--no-magic] |
 "                text | write]
 
 if exists("g:loaded_c4ctrl")
@@ -130,14 +130,8 @@ function C4ctrl(command, ...)
         if stridx("wpf", s:arg) != -1
           let s:command_line = printf("%s -%s -", s:command_line, s:arg)
         endif
-      elseif stridx("-magic", s:arg) == 0
-        try
-          let s:command_line = printf("%s --magic %s", s:command_line, a:000[s:i+1])
-        catch /^Vim\%((\a\+)\)\=:E684/
-          " Catching list index out of range
-          echoerr "Option -magic expects one argument!"
-          continue
-        endtry
+      elseif stridx("-no-magic", s:arg) == 0
+        let s:command_line = printf("%s --no-magic", s:command_line)
       endif
     endfor
 
@@ -246,14 +240,9 @@ function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
       " Complete the 'set' command "
       " ************************** "
       if a:ArgLead != ""
-        if stridx("-magic", get(s:relCmdLine, -2)) == 0
-          return "none\nemp\nfade\nflash\npulse\nwave"
-        endif
-        return "set\n-magic"
-      elseif stridx("-magic", get(s:relCmdLine, -1)) == 0
-        return "none\nemp\nfade\nflash\npulse\nwave"
+        return "set\n--no-magic"
       endif
-      return "w\np\nf\n-magic"
+      return "w\np\nf\n--no-magic"
 
     elseif stridx("text", get(s:relCmdLine, 1)) == 0
       " *************************** "
