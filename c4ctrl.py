@@ -1,15 +1,24 @@
 #!/usr/bin/env python3
 #
 # c4ctrl: Command line client for AutoC4
+#
+# Author: Shy
+
+"""
+This is a command line client for Autoc4, the home automation system of the C4.
+
+Some parts of it **may** be useful as python module for simple tasks.
+"""
 
 import sys
 
+
 class C4Interface():
-    """Interaction with the C4 home automation system."""
+    """ Interaction with the C4 home automation system. """
 
     port = 1883
     broker = "autoc4.labor.koeln.ccc.de"
-    qos = 0
+    qos = 2
     retain = True
     debug = False
 
@@ -18,7 +27,10 @@ class C4Interface():
         if topic: self.topic = topic
 
     def push(self, cmd, topic=None, retain=None):
-        """Send cmd to topic via the MQTT broker."""
+        """ Send a message to the MQTT broker.
+            
+            cmd may a byte encoded payload or a list of byte encoded
+            payloads. """
         from paho.mqtt import publish
 
         # Overwrite defaults
@@ -60,7 +72,9 @@ class C4Interface():
                     port=self.port)
 
     def pull(self, topic=[]):
-        """Return current state of topic."""
+        """ Return the state of a topic.
+            
+            topic may be a list of topics or a single topic given as string. """
         from paho.mqtt import subscribe
         topic = topic or self.topic
         # <topic> must be a list
@@ -78,7 +92,7 @@ class C4Interface():
                 port=self.port)
 
     def status(self):
-        """Print current status (open or closed) of C4."""
+        """ Returns current status (string "open" or "closed") of the club. """
         st = self.pull("club/status")
 
         # Produce fake result to prevent errors if in debug mode
@@ -88,9 +102,9 @@ class C4Interface():
             st.payload = b'\x00'
 
         if st.payload == b'\x01':
-            print("Club is open")
+            return "open"
         else:
-            print("Club is closed")
+            return "closed"
 
     def open_gate(self):
         """Open the gate."""
@@ -106,7 +120,7 @@ class C4Interface():
 
 
 class Dmx:
-    """Abstraction of the 3 channel LED cans in the club."""
+    """ Abstraction of the 3 channel LED cans in the club. """
 
     template = "000000"
 
@@ -115,13 +129,10 @@ class Dmx:
         self.set_color(color or self.template)
         self.is_master = topic.rfind("/master") == len(topic)-7 # 7 = len("/master")
 
-    def __repr__(self):
-        return "<Dmx '{}: {}'>".format(self.topic, self.color)
-
     def _pad_color(self, color):
-        """Merge hex color value into hex template.
+        """ Merge hex color value into hex template.
 
-        Expand 4 bit hex code notation (eg. #f0f) and pad with template."""
+            Expand 4 bit hex code notation (eg. #f0f) and pad with template. """
         if len(color) > len(self.template):
             # Silently truncate
             return color[:len(self.template)]
@@ -142,9 +153,9 @@ class Dmx:
         return color
 
     def set_color(self, color):
-        """Set color (hex) for this instance.
+        """ Set color (hex) for this instance.
 
-        The color is then available via its color variable."""
+            The color is then available via its color variable. """
         color = self._pad_color(color)
 
         self.color = color
@@ -152,25 +163,19 @@ class Dmx:
 
 
 class Dmx4(Dmx):
-    """Abstraction of the 4 channel LED cans in the club."""
+    """ Abstraction of the 4 channel LED cans in the club. """
 
     template = "000000ff"
 
-    def __repr__(self):
-        return "<Dmx4 '{}: {}'>".format(self.topic, self.color)
-
 
 class Dmx7(Dmx):
-    """Abstraction of the 7 channel LED cans in the club."""
+    """ Abstraction of the 7 channel LED cans in the club. """
 
     template = "000000000000ff"
 
-    def __repr__(self):
-        return "<Dmx7 '{}: {}'>".format(self.topic, self.color)
-
 
 class C4Room:
-    """Base class for club rooms."""
+    """ Methods of rooms in the club. """
 
     def __init__(self):
         self.c4 = C4Interface()
@@ -205,7 +210,8 @@ class C4Room:
         return userinput
 
     def light_switch(self, userinput=""):
-        """Switch lamps in this rooms on and off."""
+        """ Switch lamps in a room on or off. """
+
         if not userinput:
             userinput = self._interactive_light_switch()
             if userinput == "": return
@@ -237,40 +243,42 @@ class C4Room:
 
         return self.c4.push(cmd)
 
-    def set_colorscheme(self, colorscheme, magic):
-        """Apply colorscheme to the LED Cans in this room."""
+    def set_colorscheme(self, colorscheme, no_magic):
+        """ Apply colorscheme to the LED Cans in this room. """
         cmd = []
         for light in self.lights:
             if colorscheme.color_for(light.topic):
-                if magic != "none" and magic != '0':
-                    # Send color to ghost instead of the "real" light
-                    mode_id, error = Fluffy().mode_id(magic)
-                    if error:
-                        print("Warning: unknown mode \"{}\". Using default.".format(
-                            magic), file=sys.stderr)
 
-                    light.set_color(colorscheme.color_for(light.topic))
-                    cmd.append({
-                        "topic" : Fluffy().ghostly_topic(light.topic),
-                        "payload" : Fluffy().ghostly_payload(light.payload, mode_id)
-                    })
-                else:
-                    light.set_color(colorscheme.color_for(light.topic))
+                # Update internal state of this Dmx object, so we can query
+                # <object>.payload later
+                light.set_color(colorscheme.color_for(light.topic))
+
+                if no_magic:
+                    # Send data to the real lanterns, not fluffyd.
                     cmd.append({
                         "topic" : light.topic,
+                        "payload" : light.payload
+                    })
+                else:
+                    # Send color to ghost instead of the "real" light
+                    # Generate the ghost topic for topic
+                    ghost = "ghosts" + light.topic[light.topic.find('/'):]
+
+                    cmd.append({
+                        "topic" : ghost,
                         "payload" : light.payload
                     })
 
         if cmd == []: return
 
-        if magic: # Do not retain "magic" messages
-          return self.c4.push(cmd, retain=(not magic))
-        else:
+        if no_magic:
           return self.c4.push(cmd)
+        else: # Do not retain "magic" messages
+          return self.c4.push(cmd, retain=False)
 
 
 class Wohnzimmer(C4Room):
-    """The Wohnzimmer."""
+    """ Description of the Wohnzimmer. """
 
     name = "Wohnzimmer"
     switches = (
@@ -295,7 +303,7 @@ class Wohnzimmer(C4Room):
 
 
 class Plenarsaal(C4Room):
-    """The Plenarsaal."""
+    """ Description of the Plenarsaal. """
 
     name = "Plenarsaal"
     switches = (
@@ -318,7 +326,7 @@ class Plenarsaal(C4Room):
 
 
 class Fnordcenter(C4Room):
-    """The Fnordcenter."""
+    """ Description of the Fnordcenter. """
 
     name = "Fnordcenter"
     switches = (
@@ -336,7 +344,7 @@ class Fnordcenter(C4Room):
 
 
 class Keller(C4Room):
-    """The Keller."""
+    """ Description of the Keller. """
 
     name = "Keller"
     switches = (
@@ -349,7 +357,7 @@ class Keller(C4Room):
 
 
 class Kitchenlight:
-    """The Kitchenlight."""
+    """ The Kitchenlight. """
 
     _END = "little" # Endianess
     _available_modes = """
@@ -374,7 +382,7 @@ class Kitchenlight:
         self.autopower = autopower # Power on on every mode change?
 
     def _switch(self, data, poweron=False, poweroff=False):
-        """Send commands via a C4Interface to the MQTT broker."""
+        """ Send commands via a C4Interface to the MQTT broker. """
         if self.autopower or poweron or poweroff:
             c4 = C4Interface(self.topic)
             cmd = []
@@ -384,11 +392,11 @@ class Kitchenlight:
             if poweroff:
                 cmd.append({
                     "topic" : self.powertopic,
-                    "payload" : bytearray((0,))})
+                    "payload" : b'\x00'})
             elif self.autopower or poweron:
                 cmd.append({
                     "topic" : self.powertopic,
-                    "payload" : bytearray((1,))})
+                    "payload" : b'\x01'})
             c4.push(cmd)
         else:
             c4 = C4Interface(self.topic)
@@ -421,13 +429,13 @@ class Kitchenlight:
         return False
 
     def empty(self):
-        """Set to mode "empty" and turn off Kitchenlight."""
+        """ Set to mode "empty" and turn off Kitchenlight. """
         # Screen 0
         d = int(0).to_bytes(4, self._END)
         self._switch(d, poweroff=True)
 
     def checker(self, delay=500, colA="0000ff", colB="00ff00"):
-        """Set to mode "checker"."""
+        """ Set to mode "checker". """
         # Kind of a hack: lets treat the two colors as DMX lights
         ca = Dmx("checker/a", colA.lstrip('#'))
         cb = Dmx("checker/b", colB.lstrip('#'))
@@ -448,7 +456,7 @@ class Kitchenlight:
         self._switch(d)
 
     def matrix(self, lines=8):
-        """Set to mode "matrix"."""
+        """ Set to mode "matrix". """
         if int(lines) > 31: lines = 31 # Maximal line count
         d = bytearray(8)
         v = memoryview(d)
@@ -458,7 +466,7 @@ class Kitchenlight:
         self._switch(d)
 
     def moodlight(self, mode=1):
-        """Set to mode "moodlight"."""
+        """ Set to mode "moodlight". """
         if mode == 1: # Mode "Colorwheel"
             d = bytearray(19)
             v = memoryview(d)
@@ -490,7 +498,7 @@ class Kitchenlight:
         self._switch(d)
 
     def openchaos(self, delay=1000):
-        """Set to mode "openchaos"."""
+        """ Set to mode "openchaos". """
         d = bytearray(8)
         v = memoryview(d)
         # Screen 4
@@ -499,13 +507,13 @@ class Kitchenlight:
         self._switch(d)
 
     def pacman(self):
-        """Set to mode "pacman"."""
+        """ Set to mode "pacman". """
         # Screen 5
         d = int(5).to_bytes(4, self._END)
         self._switch(d)
 
     def sine(self):
-        """Set to mode "sine"."""
+        """ Set to mode "sine". """
         # Screen 6
         d = int(6).to_bytes(4, self._END)
         self._switch(d)
@@ -514,7 +522,7 @@ class Kitchenlight:
     # the Kitchenlight. Evil strobo!
 
     def text(self, text="Hello World", delay=250):
-        """Set to mode "text"."""
+        """ Set to mode "text". """
         text = text.encode("ascii", "ignore")
         if len(text) > 256: # Maximum text length
             print("Warning: text length must not exceed 256 characters!", file=sys.stderr)
@@ -529,22 +537,23 @@ class Kitchenlight:
         self._switch(d)
 
     def flood(self):
-        """Set to mode "flood"."""
+        """ Set to mode "flood". """
         # Screen 9
         d = int(9).to_bytes(4, self._END)
         self._switch(d)
 
     def clock(self):
-        """Set to mode "clock"."""
+        """ Set to mode "clock". """
         # Screen 11
         d = int(11).to_bytes(4, self._END)
         self._switch(d)
 
 
 class ColorScheme:
-    """Abstraction of a colorscheme."""
+    """ Abstraction of a colorscheme. """
 
-    # Names of virtual presets
+    # Names of virtual presets. These are always listed as available and the
+    # user may not save presets under this name.
     _virtual_presets = ["off", "random"]
 
     def __init__(self, autoinit=""):
@@ -574,7 +583,8 @@ class ColorScheme:
         else: return False
 
     def _get_cfg_dir(self, quiet=False, create=False):
-        """Returns path of the config dir."""
+        """ Returns path of the config dir. """
+
         import os
         # The name of our config directory
         XDG_NAME = "c4ctrl"
@@ -601,7 +611,7 @@ class ColorScheme:
         return cfg_dir
 
     def _expand_preset(self, preset):
-        """Tries to expand given string to a valid preset name."""
+        """ Tries to expand given string to a valid preset name. """
         import os
         if not self.available:
             cfg_dir = self._get_cfg_dir(quiet=True)
@@ -620,11 +630,13 @@ class ColorScheme:
         return preset
 
     def _topic_is_master(self, topic):
-        """Does the given topic look like a master topic?"""
+        """ Does the given topic look like a master topic? """
+
         return topic.lower().rfind("/master") == len(topic)-7 # 7 = len("/master")
 
     def _random_color(self):
-        """Returns a 3*4 bit pseudo random color in 6 char hex notation."""
+        """ Returns a 3*4 bit pseudo random color in 6 char hex notation. """
+
         from random import randint, sample
         chls = [15]
         chls.append(randint(0,15))
@@ -660,9 +672,13 @@ class ColorScheme:
         return color
 
     def color_for(self, topic):
-        """Returns the color (hex) this ColorScheme provides for the given topic."""
+        """ Returns the color (in hexadecimal notation) this ColorScheme assumes
+            for the given topic. """
+
         # We need to take care not to return colors for both "normal" topics
-        # and masters, as setting masters would override other settings
+        # and masters, as setting masters would override other settings.
+        # If this ColorScheme has been read from a file though, we asssume that
+        # the user has taken care of this and apply what we are told to apply.
         if self.mapping:
             if topic in self.mapping.keys():
                 return self.mapping[topic]
@@ -676,7 +692,8 @@ class ColorScheme:
         return None
 
     def from_file(self, preset):
-        """Load ColorScheme from file."""
+        """ Load ColorScheme from file. """
+
         if preset == '-':
             fd = sys.stdin
         else:
@@ -721,15 +738,15 @@ class ColorScheme:
         fd.close()
 
     def from_color(self, color):
-        """Derive ColorScheme from a single hex color."""
+        """ Derive ColorScheme from a single hex color. """
         self.single_color = color.lstrip('#').strip('-')
 
     def from_random(self):
-        """Derive ColorScheme from random colors."""
+        """ Derive ColorScheme from random colors. """
         self.return_random_color = True
 
     def list_available(self):
-        """List available presets."""
+        """ List available presets. """
         import os
         cfg_dir = self._get_cfg_dir()
         if not cfg_dir:
@@ -745,7 +762,7 @@ class ColorScheme:
             print("  " + entry)
 
     def store(self, name):
-        """Store the current state of all lights as preset."""
+        """ Store the current state of all lights as preset. """
         # First of all, refuse to override virtual presets
         if name in self._virtual_presets:
             print("I'm sorry Dave. I'm afraid I can't do that. The name \"{}\" is reserved. Please choose a different one.".format(name))
@@ -809,39 +826,8 @@ class ColorScheme:
             print("Wrote preset \"{}\"".format(name))
 
 
-class Fluffy:
-    """Fluffyd functions."""
-
-    modes = {
-        # Fluffy modes and their id's
-        "fade" : 1,
-        "wave" : 4,
-        "pulse" : 8,
-        "emp" : 9,
-        "flash" : 12
-    }
-
-    def ghostly_topic(self, topic):
-        # Return the ghost topic of topic
-        return "ghosts" + topic[topic.find('/'):]
-
-    def ghostly_payload(self, payload, mode_id):
-        return payload + int(mode_id).to_bytes(1, "little")
-
-    def mode_id(self, name):
-        if name.isdecimal() and int(name) <= 255:
-            # Let's trust the user with this
-            return (int(name), False)
-        else:
-            if name.lower() in self.modes.keys():
-                return (self.modes[name.lower()], False)
-
-        # Fallback
-        return (0, True)
-
-
 class RemotePresets:
-    """Remote preset control."""
+    """ Remote preset control. """
 
     def __init__(self):
         self.map = {
@@ -878,7 +864,7 @@ class RemotePresets:
             }
 
     def _expand_room_name(self, name):
-        """Try to expand partial names."""
+        """ Returns a valid room name expanded from the given name. """
         if name in self.map.keys():
             # Return on exact match
             return name
@@ -890,12 +876,15 @@ class RemotePresets:
         return name
 
     def _expand_preset_name(self, name, rooms, available):
-        """Try to expand partial preset names.
+        """ Returns a valid preset name expanded from the given name.
         
-        <rooms> must be a list of rooms to consider.
-        <available> must be a dict as returned by query_available()."""
-        # We need to take care to match only presets which are available for
-        # every room specified
+            Takes care to match only presets which are available for all rooms
+            specified.
+
+            rooms is a list of rooms for which the preset should be a valid
+            option.
+            available is a dict containing valid presets for rooms as returned
+            by query_available(). """
 
         # Strip every "global" out of the room list. We take special care of
         # "global" later on.
@@ -932,7 +921,7 @@ class RemotePresets:
         return name
 
     def query_available(self, rooms=["global"]):
-        """Returns a dict of remotely available presets for [rooms]."""
+        """ Returns a dict of remotely available presets for [rooms]. """
         import json
 
         # Presets in "global" are available everywhere and should always be included
@@ -961,7 +950,8 @@ class RemotePresets:
         return available
 
     def list_available(self, room="global"):
-        """Print a list of available Presets."""
+        """ Print a list of available Presets. """
+
         room = self._expand_room_name(room)
         available = self.query_available([room])
 
@@ -974,7 +964,8 @@ class RemotePresets:
                     print( "  " + preset)
 
     def apply_preset(self, preset, rooms=["global"]):
-        """Apply preset to given rooms."""
+        """ Apply preset to given rooms. """
+
         # Strip spaces and expand rooms names
         for i in range(len(rooms)):
             rooms[i] = self._expand_room_name(rooms[i].strip())
@@ -1015,6 +1006,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-d", "--debug", action="store_true",
         help="display what would be send to the MQTT broker, but do not actually connect")
+
     # Various club functions
     group_fn = parser.add_argument_group(title="various functions")
     group_fn.add_argument(
@@ -1026,6 +1018,7 @@ if __name__ == "__main__":
     group_fn.add_argument(
         "-S", "--shutdown", action="count",
         help="shutdown (give twice to force shutdown)")
+
     # Kitchenlight control
     group_kl = parser.add_argument_group(title="Kitchenlight control")
     group_kl.add_argument(
@@ -1034,6 +1027,7 @@ if __name__ == "__main__":
     group_kl.add_argument(
         "-i", "--list-kl-modes", action="store_true",
         help="list available Kitchenlight modes and their options")
+
     # Ambient control
     group_cl = parser.add_argument_group(title="ambient color control",
         description="PRESET may be either a preset name (which may be abbreviated), '#' followed by a color value in hex notation (eg. \"#ff0066\") or '-' to read from stdin.")
@@ -1047,14 +1041,15 @@ if __name__ == "__main__":
         "-f", "--fnordcenter", type=str, dest="f_color", metavar="PRESET",
         help="apply local colorscheme PRESET to Fnordcenter")
     group_cl.add_argument(
-        "-m", "--magic", type=str, default="fade", metavar="MODE",
-        help="EXPERIMENTAL: blend into preset (needs a running instance of fluffyd on the network). MODE is either \"fade\", \"wave\", \"pulse\", \"emp\", \"flash\" or \"none\".")
+        "-N", "--no-magic", action="store_true",
+        help="Do not use fluffyd to change colors.")
     group_cl.add_argument(
         "-l", "--list-presets", action="store_true",
         help="list locally available presets")
     group_cl.add_argument(
         "-o", "--store-preset", type=str, dest="store_as", metavar="NAME",
         help="store current state as preset NAME ('-' to write to stdout)")
+
     # Switch control
     group_sw = parser.add_argument_group(title="light switch control",
         description="BINARY_CODE is a string of 0s or 1s for every light in the room. Accepts integers also. Will show some information and ask for input if omitted.")
@@ -1070,6 +1065,7 @@ if __name__ == "__main__":
     group_sw.add_argument(
         "-K", nargs='?', dest="k_switch", const="", metavar="BINARY_CODE",
         help="switch lights in Keller on/off")
+
     # Remote presets
     group_rp = parser.add_argument_group(title="remote preset functions",
         description="Available room names are \"wohnzimmer\", \"plenar\", \"fnord\" and \"keller\". Preset and room names may be abbreviated.")
@@ -1085,7 +1081,8 @@ if __name__ == "__main__":
     if args.debug:
         C4Interface.debug = True
     if args.status:
-        C4Interface().status()
+        status = C4Interface().status()
+        print("Club is", status)
     if args.gate:
         C4Interface().open_gate()
     if args.shutdown:
@@ -1113,15 +1110,15 @@ if __name__ == "__main__":
     if args.w_color:
         if args.w_color not in presets:
             presets[args.w_color] = ColorScheme(autoinit=args.w_color)
-        if presets[args.w_color]: Wohnzimmer().set_colorscheme(presets[args.w_color], args.magic)
+        if presets[args.w_color]: Wohnzimmer().set_colorscheme(presets[args.w_color], args.no_magic)
     if args.p_color:
         if args.p_color not in presets:
             presets[args.p_color] = ColorScheme(autoinit=args.p_color)
-        if presets[args.p_color]: Plenarsaal().set_colorscheme(presets[args.p_color], args.magic)
+        if presets[args.p_color]: Plenarsaal().set_colorscheme(presets[args.p_color], args.no_magic)
     if args.f_color:
         if args.f_color not in presets:
             presets[args.f_color] = ColorScheme(autoinit=args.f_color)
-        if presets[args.f_color]: Fnordcenter().set_colorscheme(presets[args.f_color], args.magic)
+        if presets[args.f_color]: Fnordcenter().set_colorscheme(presets[args.f_color], args.no_magic)
     if args.list_presets:
         ColorScheme().list_available()
 
