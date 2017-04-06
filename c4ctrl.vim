@@ -1,12 +1,11 @@
 " This Vim plugin makes some functionality of the c4ctrl utility available
 " from within Vim.
 "
-" Last Change: 2017 Apr 03
+" Last Change: 2017 Apr 06
 " Maintainer: Shy
 " License: This file is placed in the public domain.
 "
-" Usage: C4ctrl [get | open PRESET | set [w] [p] [f] [--no-magic] |
-"                text | write]
+" Usage: C4ctrl [get | open PRESET | set [w] [p] [f] [-magic] | text | write]
 
 if exists("g:loaded_c4ctrl")
   finish
@@ -130,8 +129,8 @@ function C4ctrl(command, ...)
         if stridx("wpf", s:arg) != -1
           let s:command_line = printf("%s -%s -", s:command_line, s:arg)
         endif
-      elseif stridx("-no-magic", s:arg) == 0
-        let s:command_line = printf("%s --no-magic", s:command_line)
+      elseif stridx("-magic", s:arg) == 0
+        let s:command_line = printf("%s --magic", s:command_line)
       endif
     endfor
 
@@ -240,9 +239,9 @@ function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
       " Complete the 'set' command "
       " ************************** "
       if a:ArgLead != ""
-        return "set\n--no-magic"
+        return "set\n-magic"
       endif
-      return "w\np\nf\n--no-magic"
+      return "w\np\nf\n-magic"
 
     elseif stridx("text", get(s:relCmdLine, 1)) == 0
       " *************************** "

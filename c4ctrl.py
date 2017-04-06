@@ -243,7 +243,7 @@ class C4Room:
 
         return self.c4.push(cmd)
 
-    def set_colorscheme(self, colorscheme, no_magic):
+    def set_colorscheme(self, colorscheme, magic):
         """ Apply colorscheme to the LED Cans in this room. """
         cmd = []
         for light in self.lights:
@@ -253,13 +253,7 @@ class C4Room:
                 # <object>.payload later
                 light.set_color(colorscheme.color_for(light.topic))
 
-                if no_magic:
-                    # Send data to the real lanterns, not fluffyd.
-                    cmd.append({
-                        "topic" : light.topic,
-                        "payload" : light.payload
-                    })
-                else:
+                if magic:
                     # Send color to ghost instead of the "real" light
                     # Generate the ghost topic for topic
                     ghost = "ghosts" + light.topic[light.topic.find('/'):]
@@ -268,13 +262,19 @@ class C4Room:
                         "topic" : ghost,
                         "payload" : light.payload
                     })
+                else:
+                    # Send data to the real lanterns, not fluffyd.
+                    cmd.append({
+                        "topic" : light.topic,
+                        "payload" : light.payload
+                    })
 
         if cmd == []: return
 
-        if no_magic:
-          return self.c4.push(cmd)
-        else: # Do not retain "magic" messages
+        if magic: # Do not retain "magic" messages
           return self.c4.push(cmd, retain=False)
+        else:
+          return self.c4.push(cmd)
 
 
 class Wohnzimmer(C4Room):
@@ -1041,8 +1041,8 @@ if __name__ == "__main__":
         "-f", "--fnordcenter", type=str, dest="f_color", metavar="PRESET",
         help="apply local colorscheme PRESET to Fnordcenter")
     group_cl.add_argument(
-        "-N", "--no-magic", action="store_true",
-        help="Do not use fluffyd to change colors.")
+        "-M", "--magic", action="store_true",
+        help="Use fluffyd to change colors.")
     group_cl.add_argument(
         "-l", "--list-presets", action="store_true",
         help="list locally available presets")
@@ -1110,15 +1110,15 @@ if __name__ == "__main__":
     if args.w_color:
         if args.w_color not in presets:
             presets[args.w_color] = ColorScheme(autoinit=args.w_color)
-        if presets[args.w_color]: Wohnzimmer().set_colorscheme(presets[args.w_color], args.no_magic)
+        if presets[args.w_color]: Wohnzimmer().set_colorscheme(presets[args.w_color], args.magic)
     if args.p_color:
         if args.p_color not in presets:
             presets[args.p_color] = ColorScheme(autoinit=args.p_color)
-        if presets[args.p_color]: Plenarsaal().set_colorscheme(presets[args.p_color], args.no_magic)
+        if presets[args.p_color]: Plenarsaal().set_colorscheme(presets[args.p_color], args.magic)
     if args.f_color:
         if args.f_color not in presets:
             presets[args.f_color] = ColorScheme(autoinit=args.f_color)
-        if presets[args.f_color]: Fnordcenter().set_colorscheme(presets[args.f_color], args.no_magic)
+        if presets[args.f_color]: Fnordcenter().set_colorscheme(presets[args.f_color], args.magic)
     if args.list_presets:
         ColorScheme().list_available()
 
