@@ -38,7 +38,7 @@ function s:FindConfigDir()
 endfunction
 
 
-function C4ctrl(command, ...)
+function C4ctrl(command, ...) range
   " ********************************************************************* "
   " Make some functionality of the 'c4ctrl' command line script available "
   " from within Vim.                                                      "
@@ -134,7 +134,8 @@ function C4ctrl(command, ...)
       endif
     endfor
 
-    silent let s:ret = system(s:command_line, bufnr("%"))
+    "silent let s:ret = system(s:command_line, bufnr("%"))
+    silent let s:ret = system(s:command_line, getline(a:firstline, a:lastline))
 
     unlet! s:arg s:i s:command_line s:txt
 
@@ -289,6 +290,6 @@ if !exists(":C4ctrl")
   " ********************** "
   " Add our command to Vim "
   " ********************** "
-  command -nargs=+ -complete=custom,s:C4ctrlCompletion C4ctrl call C4ctrl(<f-args>)
+  command -nargs=+ -complete=custom,s:C4ctrlCompletion -range=% C4ctrl call C4ctrl(<f-args>)
 endif
 
