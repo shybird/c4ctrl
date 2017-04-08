@@ -24,11 +24,11 @@ Depends on *c4ctrl[.py]*. Install by putting *c4ctrl.vim* into your
 
 ### Usage
 ```
-:C4ctrl get                 -- Read current state into buffer.
-:C4ctrl open $name          -- Open local preset $name.
-:C4ctrl set [w|p|f]         -- Apply current buffer as preset to room
-            [-magic $mode]     [w]ohnzimmer, [p]lenarsaal or [f]nordcenter.
-                               Default is all rooms.
-:C4ctrl text                -- Put line under cursor on the Kitchenlight.
-:C4ctrl write $name         -- Save current buffer as preset $name.
+:C4ctrl get                   -- Read current state into buffer.
+:C4ctrl open $name            -- Open local preset $name.
+:C4ctrl set [w|p|f] [-magic]  -- Apply current buffer as preset to room
+                                 [w]ohnzimmer, [p]lenarsaal or [f]nordcenter.
+                                 Default is all rooms.
+:C4ctrl text                  -- Put line under cursor on the Kitchenlight.
+:C4ctrl write $name           -- Save current buffer as preset $name.
 ```
