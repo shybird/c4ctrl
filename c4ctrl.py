@@ -18,10 +18,14 @@ import sys
 class C4Interface():
     """ Interaction with AutoC4, the C4 home automation system. """
 
+    from uuid import uuid4
+
     broker = "autoc4.labor.koeln.ccc.de"
     port = 1883
     qos = 2
     retain = True
+    # Generate a (sufficiently) unique client id
+    client_id = "c4ctrl-" + uuid4().hex
     debug = False
 
     def push(self, message, topic=None, retain=None):
@@ -62,7 +66,8 @@ class C4Interface():
 
             publish.multiple(message,
                     hostname=self.broker,
-                    port=self.port)
+                    port=self.port,
+                    client_id=self.client_id)
 
         else: # Message is not a list
             if self.debug:
@@ -74,7 +79,8 @@ class C4Interface():
                     qos=self.qos,
                     retain=retain,
                     hostname=self.broker,
-                    port=self.port)
+                    port=self.port,
+                    client_id=self.client_id)
 
     def pull(self, topic=[]):
         """ Return the state of a topic.
@@ -99,7 +105,8 @@ class C4Interface():
                 msg_count=len(topic),
                 qos=self.qos,
                 hostname=self.broker,
-                port=self.port)
+                port=self.port,
+                client_id=self.client_id)
 
     def status(self):
         """ Returns current status (string "open" or "closed") of the club. """
@@ -212,7 +219,7 @@ class C4Room:
             for level in range(len(self.switches)):
                 print((level * '|') + ",- " + self.switches[level][0])
 
-            self.switch_state = self._get_state()
+            self.switch_state = self.get_switch_state()
             print(self.switch_state) # Present current state
 
         try:
@@ -223,7 +230,7 @@ class C4Room:
 
         return userinput
 
-    def _get_state(self):
+    def get_switch_state(self):
         """ Returns current state of switches as a string of 1s and 0s. """
 
         state = ""
@@ -255,13 +262,27 @@ class C4Room:
         mode = 'n' # n = normal, a = AND, o = OR
         if not userinput.isdecimal():
             if userinput[0] == '&' and userinput[1:].isdecimal():
-                # AND operator
+                # AND operator, applied later after doing some more validation
                 userinput = userinput[1:]
                 mode = 'a'
             elif userinput[0] == '|' and userinput[1:].isdecimal():
-                # OR operator
+                # OR operator, applied later after doing some more validation
                 userinput = userinput[1:]
                 mode = 'o'
+            elif userinput == ">>" or userinput == "<<":
+                # Left and right shift
+                if not self.switch_state:
+                    self.switch_state = self.get_switch_state()
+                if userinput == ">>":
+                    # Right shift. '[2:]' removes the leading 'b0...'.
+                    new_state = bin(int(self.switch_state, base=2) >> 1)[2:]
+                else:
+                    # Left shift. '[2:]' removes the leading 'b0...'.
+                    new_state = bin(int(self.switch_state, base=2) << 1)[2:]
+                    # Cut any exceeding leftmost bits
+                    new_state = new_state[-len(self.switches):]
+                # Pad with leading zeroes
+                userinput = new_state.rjust(len(self.switches), '0')
             else:
                 print("You're not paying attention!", file=sys.stderr)
                 return
@@ -287,11 +308,13 @@ class C4Room:
                 return False
 
         if mode == 'a': # AND operator
-            if not self.switch_state: self.switch_state = self._get_state()
+            if not self.switch_state:
+                self.switch_state = self.get_switch_state()
             userinput = "".join(map(lambda x, y: str(int(x) & int(y)),
                                     userinput, self.switch_state))
         elif mode == 'o': # OR operator
-            if not self.switch_state: self.switch_state = self._get_state()
+            if not self.switch_state:
+                self.switch_state = self.get_switch_state()
             userinput = "".join(map(lambda x, y: str(int(x) | int(y)),
                                     userinput, self.switch_state))
 
