@@ -43,8 +43,8 @@ def kitchentext(delay=200, single=False, wait=False, restore=False, poweron=Fals
 
     # Store previous state
     if restore:
-        c4 = C4Interface([kl.topic, kl.powertopic])
-        safe = c4.pull()
+        c4 = C4Interface()
+        safe = c4.pull([kl.topic, kl.powertopic])
 
     try:
         stop = False
