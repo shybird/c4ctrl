@@ -1189,9 +1189,10 @@ if __name__ == "__main__":
 
     # Switch control
     group_sw = parser.add_argument_group(title="light switch control",
-        description="BINARY_CODE is a string of 0s or 1s for every light in the \
-        room. Accepts decimals also. May be prepended by '&' or '^' as AND or \
-        OR operators. Will show some information and ask for input if omitted.")
+        description="BINARY_CODE is a string of 0s or 1s for every light in a \
+        room. May be given as decimal. May be prepended by '&' or '|' as AND \
+        or OR operators. Will show usage information and ask for input if \
+        omitted.")
     group_sw.add_argument(
         "-W", nargs='?', dest="w_switch", const="", metavar="BINARY_CODE",
         help="switch lights in Wohnzimmer on/off")
