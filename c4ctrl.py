@@ -25,8 +25,8 @@ class C4Interface():
     retain = True
     # Generate a (sufficiently) unique client id
     client_id = "c4ctrl-" + "".join(
-        choice("0123456789abcdefABCDEF") for unused in range(16)
-    )
+        choice("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+            for unused in range(16))
     debug = False
 
     def push(self, message, topic=None, retain=None):
@@ -698,24 +698,24 @@ class ColorScheme:
     # user may not save presets under this name.
     _virtual_presets = ["off", "random"]
 
-    def __init__(self, autoinit=""):
+    def __init__(self, init=""):
         self.mapping = {}
         self.single_color = False
         self.return_random_color = False
         self.available = None # List of available presets
-        if autoinit:
+        if init:
             # Load or generate preset
-            if autoinit[0] == '#':
-                return self.from_color(autoinit)
-            elif self._expand_preset(autoinit) == "off":
+            if init[0] == '#':
+                return self.from_color(init)
+            elif self._expand_preset(init) == "off":
                 # Virtual preset: set masters to #000000
                 return self.from_color("000000")
-            elif self._expand_preset(autoinit) == "random":
+            elif self._expand_preset(init) == "random":
                 # Virtual preset: return random color on every query
                 return self.from_random()
             else:
                 # Load preset file
-                return self.from_file(autoinit)
+                return self.from_file(init)
 
     def __bool__(self):
         # Return true if get_color_for has a chance to present anything useful
@@ -724,7 +724,7 @@ class ColorScheme:
         if self.return_random_color: return True
         else: return False
 
-    def _get_cfg_dir(self, quiet=False, create=False):
+    def _get_config_dir(self, ignore_missing=False, create=False):
         """ Returns path of the config dir. """
 
         import os
@@ -738,29 +738,29 @@ class ColorScheme:
             XDG_CONFIG_DIR = os.path.expanduser("~/.config")
 
         # Does our config dir exist?
-        cfg_dir = os.path.join(XDG_CONFIG_DIR, XDG_NAME)
-        if not os.path.isdir(cfg_dir):
+        config_dir = os.path.join(XDG_CONFIG_DIR, XDG_NAME)
+        if not os.path.isdir(config_dir):
             if create:
-                print("Creating config directory \"{}\"".format(cfg_dir))
-                os.mkdir(cfg_dir)
-            elif quiet:
+                print("Creating config directory \"{}\"".format(config_dir))
+                os.mkdir(config_dir)
+            elif ignore_missing:
                 return None
             else:
                 print("Warning: config dir \"{}\" does not exist!".format(
-                    cfg_dir), file=sys.stderr)
+                    config_dir), file=sys.stderr)
                 return None
 
-        return cfg_dir
+        return config_dir
 
     def _expand_preset(self, preset):
         """ Tries to expand given string to a valid preset name. """
         import os
         if not self.available:
-            cfg_dir = self._get_cfg_dir(quiet=True)
-            if not cfg_dir:
+            config_dir = self._get_config_dir(ignore_missing=True)
+            if not config_dir:
                 self.available = self._virtual_presets.copy()
             else:
-                self.available = os.listdir(cfg_dir)
+                self.available = os.listdir(config_dir)
                 self.available.extend(self._virtual_presets)
         # Search for an exact match first
         for a in self.available:
@@ -780,13 +780,13 @@ class ColorScheme:
         """ Returns a 3*4 bit pseudo random color in 6 char hex notation. """
 
         from random import randint, sample
-        chls = [15]
-        chls.append(randint(0,15))
-        chls.append(randint(0,15) - chls[1])
-        if chls[2] < 0: chls[2] = 0
+        channels = [15]
+        channels.append(randint(0,15))
+        channels.append(randint(0,15) - channels[1])
+        if channels[2] < 0: channels[2] = 0
 
         color = ""
-        for ch in sample(chls, k=3):
+        for ch in sample(channels, k=3):
             color += hex(ch)[2:]*2
         return color
 
@@ -800,7 +800,8 @@ class ColorScheme:
             if topic in self.mapping.keys():
                 return self.mapping[topic]
         elif self.single_color:
-            return self.single_color
+            if not self._topic_is_master(topic):
+                return self.single_color
         elif self.return_random_color:
             # We need to take care not to return colors for both "normal" and
             # master topics
@@ -816,15 +817,15 @@ class ColorScheme:
             fd = sys.stdin
         else:
             import os
-            cfg_dir = self._get_cfg_dir()
-            if not cfg_dir:
+            config_dir = self._get_config_dir()
+            if not config_dir:
                 print("Error: could not load preset!")
                 return
 
             # Expand preset name
             preset = self._expand_preset(preset)
             # Try to open the preset file
-            fn = os.path.join(cfg_dir, preset)
+            fn = os.path.join(config_dir, preset)
             try:
                 fd = open(fn)
             except OSError:
@@ -870,12 +871,12 @@ class ColorScheme:
 
         import os
 
-        cfg_dir = self._get_cfg_dir()
-        if not cfg_dir:
+        config_dir = self._get_config_dir()
+        if not config_dir:
             self.available = self._virtual_presets.copy()
 
         if not self.available:
-            self.available = os.listdir(cfg_dir)
+            self.available = os.listdir(config_dir)
             self.available.extend(self._virtual_presets)
         self.available.sort()
         print("Available presets:\n")
@@ -900,10 +901,10 @@ is reserved. Please choose a different one.".format(name))
             import os
 
             # Put preset in our config directory, create it if necessary
-            cfg_dir = self._get_cfg_dir(create=True)
+            config_dir = self._get_config_dir(create=True)
             # Strip any path elements
             name = os.path.split(name)[1]
-            fn = os.path.join(cfg_dir, name)
+            fn = os.path.join(config_dir, name)
 
             try:
                 fd = open(fn, 'xt') # x = new file (writing), t = text mode
@@ -1251,15 +1252,15 @@ if __name__ == "__main__":
     presets = {} # Store and reuse initialized presets
     if args.w_color:
         if args.w_color not in presets:
-            presets[args.w_color] = ColorScheme(autoinit=args.w_color)
+            presets[args.w_color] = ColorScheme(args.w_color)
         if presets[args.w_color]: Wohnzimmer().set_colorscheme(presets[args.w_color], args.magic)
     if args.p_color:
         if args.p_color not in presets:
-            presets[args.p_color] = ColorScheme(autoinit=args.p_color)
+            presets[args.p_color] = ColorScheme(args.p_color)
         if presets[args.p_color]: Plenarsaal().set_colorscheme(presets[args.p_color], args.magic)
     if args.f_color:
         if args.f_color not in presets:
-            presets[args.f_color] = ColorScheme(autoinit=args.f_color)
+            presets[args.f_color] = ColorScheme(args.f_color)
         if presets[args.f_color]: Fnordcenter().set_colorscheme(presets[args.f_color], args.magic)
     if args.list_presets:
         ColorScheme().list_available()
