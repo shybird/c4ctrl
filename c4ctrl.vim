@@ -1,7 +1,7 @@
 " This Vim plugin makes some functionality of the c4ctrl utility available
 " from within Vim.
 "
-" Last Change: 2017 Apr 06
+" Last Change: 2017 Apr 11
 " Maintainer: Shy
 " License: This file is placed in the public domain.
 "
@@ -20,43 +20,56 @@ function s:FindConfigDir()
   " ************************************************ "
 
   " Run only once
-  if exists("s:cfgdir")
-    return s:cfgdir
+  if exists("s:config_dir")
+    return s:config_dir
   endif
 
   if expand("$XDG_CONFIG_DIR") != "$XDG_CONFIG_DIR"
-    let s:cfgdir = expand("$XDG_CONFIG_DIR/c4ctrl/")
+    let s:config_dir = expand("$XDG_CONFIG_DIR/c4ctrl/")
   else
-    let s:cfgdir = expand("$HOME/.config/c4ctrl/")
+    let s:config_dir = expand("$HOME/.config/c4ctrl/")
   endif
 
-  if !isdirectory(s:cfgdir)
-    echo "Could not access config dir:" s:cfgdir
+  if !isdirectory(s:config_dir)
+    echo "Could not access config dir:" s:config_dir
     return ""
   endif
-  return s:cfgdir
+  return s:config_dir
 endfunction
 
 
-function C4ctrl(command, ...) range
-  " ********************************************************************* "
-  " Make some functionality of the 'c4ctrl' command line script available "
-  " from within Vim.                                                      "
-  " Available commands are 'get', 'open', 'set', 'text' and 'write'.      "
-  " ********************************************************************* "
+function C4ctrl(prev_cursor_pos, mods, first_line, last_line, command, ...) range
+  " *********************************************************************** "
+  " Make some functionality of the 'c4ctrl' command line utility available  "
+  " from within Vim.                                                        "
+  " Available commands are 'get', 'open', 'set', 'text' and 'write'.        "
+  " Arguments:                                                              "
+  "   prev_cursor_pos   -- cursor position as returned by getcurpos()       "
+  "   mods              -- modifiers (:command variable <f-mods>)           "
+  "   first_line        -- first line of range (:command <line1>            "
+  "   last_line         -- last line of range (:command <line2>             "
+  "   command           -- user command ('get', 'set' etc.)                 "
+  "   [command options] -- optional command options                         "
+  " *********************************************************************** "
 
   " Name of the executable.
   let s:c4ctrl = "c4ctrl"
 
   " This function will be called after a preset file has been loaded
   " into the buffer.
-  function s:SynHighlight()
-    syn match Identifier "^[ \t]*[0-9a-zA-Z/]*"
-    " Match values like 03f with optional space between
-    syn match Number "=\([ \t]*[0-9a-fA-F]\)\{3} *$"hs=s+1
-    " Match values like 0033ff with optional space between bytes
-    syn match Number "=\([ \t]*[0-9a-fA-F]\{2}\)\{3}"hs=s+1
-    syn match Comment "^[ \t]*[#!\"].*" 
+  function! s:SynHighlight()
+    " Match topics
+    syn match Identifier "\c^\s*[0-9a-z/]*\ze\s*="
+    " Match color values with 3 digits
+    syn match Number "\c=\s*\zs\(\s*[0-9a-f]\)\{3}"
+    " Match color values with 6 digits
+    syn match Number "\c=\s*\zs\(\s*[0-9a-f]\)\{6}"
+    " Match comments
+    syn match Comment "^\s*[#!\"].*" 
+    " Match error: too few digits
+    syn match Error "\c=\s*\zs[0-9a-f]\{1,2}$"
+    " Match error: invalid chars as digit
+    syn match Error "\c=\s*\zs.*[^ \t0-9a-f]\+.*"
   endfunction
 
   " Check if we can excute c4ctrl or c4ctrl.py and modify the variable
@@ -76,11 +89,9 @@ function C4ctrl(command, ...) range
     " *********************************** "
     " Read current status into new buffer "
     " *********************************** "
-    if getbufinfo("%")[0].changed
-      " Spawn a new window if the current buffer has changes
-      vnew
-    endif
+    execute a:mods "new"
     silent execute "0 read !" s:c4ctrl "-o -"
+    normal 0gg
     call s:SynHighlight()
 
   elseif stridx("open", a:command) == 0
@@ -92,24 +103,19 @@ function C4ctrl(command, ...) range
       return
     endif
 
-    let s:cfgdir = s:FindConfigDir()
-    if s:cfgdir == ""
+    let s:config_dir = s:FindConfigDir()
+    if s:config_dir == ""
       return
     endif
-    let s:filename = s:cfgdir . a:1
-    if !filereadable(s:filename)
-      echoerr "Error: could not open file" s:filename
+    let filename = s:config_dir . a:1
+    if !filereadable(filename)
+      echoerr "Error: could not open file" filename
       return
     endif
 
-    if getbufinfo("%")[0].changed
-      " Spawn a new window if the current buffer has changes
-      vnew
-    endif
-    execute "edit" fnameescape(s:filename)
+    execute a:mods "new"
+    execute "edit" fnameescape(filename)
     call s:SynHighlight()
-
-    unlet s:filename
 
   elseif stridx("set", a:command) == 0
     " ****************************** "
@@ -117,27 +123,27 @@ function C4ctrl(command, ...) range
     " ****************************** "
 
     " Let's start by building a command line
-    let s:command_line = s:c4ctrl
+    let command_line = s:c4ctrl
     if a:0 == 0
       " If no room is given, set colors for all rooms
-      let s:command_line .= " -w - -p - -f -"
+      let command_line .= " -w - -p - -f -"
     endif
 
-    for s:i in range(a:0)
-      let  s:arg = a:000[s:i]
-      if strchars(s:arg) == 1
-        if stridx("wpf", s:arg) != -1
-          let s:command_line = printf("%s -%s -", s:command_line, s:arg)
+    for i in range(a:0)
+      let  arg = a:000[i]
+      if strchars(arg) == 1
+        if stridx("wpf", arg) != -1
+          let command_line = printf("%s -%s -", command_line, arg)
         endif
-      elseif stridx("-magic", s:arg) == 0
-        let s:command_line = printf("%s --magic", s:command_line)
+      elseif stridx("-magic", arg) == 0
+        let command_line = printf("%s --magic", command_line)
       endif
     endfor
 
-    "silent let s:ret = system(s:command_line, bufnr("%"))
-    silent let s:ret = system(s:command_line, getline(a:firstline, a:lastline))
+    silent let ret = system(command_line, getline(a:first_line, a:last_line))
 
-    unlet! s:arg s:i s:command_line s:txt
+    " Restore cursor position
+    call setpos('.', a:prev_cursor_pos)
 
   elseif stridx("text", a:command) == 0
     " ********************************************** "
@@ -145,10 +151,8 @@ function C4ctrl(command, ...) range
     " ********************************************** "
 
     " Strip any ','
-    let s:txt = substitute(getline("."), ",", "", "g")
-    let s:ret = system(printf("%s -k text,%s", s:c4ctrl, shellescape(s:txt)))
-
-    unlet! s:txt
+    let txt = substitute(getline("."), ",", "", "g")
+    let ret = system(printf("%s -k text,%s", s:c4ctrl, shellescape(txt)))
 
   elseif stridx("write", substitute(a:command, "!$", "", "")) == 0
     " ********************************* "
@@ -159,21 +163,19 @@ function C4ctrl(command, ...) range
       return
     endif
 
-    let s:cfgdir = s:FindConfigDir()
-    if s:cfgdir == ""
+    let s:config_dir = s:FindConfigDir()
+    if s:config_dir == ""
       return
     endif
 
-    let s:filename = s:cfgdir . a:1
+    let filename = s:config_dir . a:1
 
     if strridx(a:command, "!") + 1 == len(a:command)
       " Force if a '!' was appended to the command
-      execute "saveas!" fnameescape(s:filename)
+      execute "saveas!" fnameescape(filename)
     else
-      execute "saveas" fnameescape(s:filename)
+      execute "saveas" fnameescape(filename)
     endif
-
-    unlet s:filename
 
   else
     " ****************** "
@@ -185,12 +187,12 @@ function C4ctrl(command, ...) range
 
   " Echo return if shell exited with an error
   if v:shell_error
-    if exists("s:ret")
-      echoerr s:ret
+    if exists("ret")
+      echoerr ret
     endif
   endif
 
-  unlet! s:c4ctrl s:ret s:cfgdir
+  unlet! s:c4ctrl s:config_dir
   delfunction s:SynHighlight
 endfunction
 
@@ -201,32 +203,40 @@ function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
   " ****************************** "
 
   " The name of the command we are adding to Vim
-  let s:Name = "C4ctrl"
-  " A list of current cmd line arguments excluding leading commands like
+  let command_name = "C4ctrl"
+  " A list of current cmd line arguments excluding leading mods like
   " :vertical, :tab etc.
-  let s:relCmdLine = split(a:CmdLine)
-  let s:relCmdLine = s:relCmdLine[index(s:relCmdLine, s:Name):]
+  let relCmdLine = split(a:CmdLine)
+  " User may have abbreviated our command name
+  while index(relCmdLine, command_name) == -1
+    let command_name = strpart(command_name, 0, len(command_name)-1) 
+    if len(command_name) == 0
+      " This should never happen, but let's not risk an infinite loop anyway
+      return ""
+    endif
+  endwhile
+  let relCmdLine = relCmdLine[index(relCmdLine, command_name):]
 
   try " We use the matching finally for cleaning up
-    if stridx("open", get(s:relCmdLine, 1)) == 0
+    if stridx("open", get(relCmdLine, 1)) == 0
       " *************************** "
       " Complete the 'open' command "
       " *************************** "
       if a:ArgLead != ""
-        if len(s:relCmdLine) == 2
+        if len(relCmdLine) == 2
           return "open"
         endif
-      elseif len(s:relCmdLine) > 2
+      elseif len(relCmdLine) > 2
         " Do not return more than one file name
         return ""
       endif
-      let s:cfgdir = s:FindConfigDir()
-      if s:cfgdir == ""
+      let s:config_dir = s:FindConfigDir()
+      if s:config_dir == ""
         return ""
       endif
-      return join(map(glob(s:cfgdir."*", 0, 1), "fnamemodify(v:val, ':t')"), "\n")
+      return join(map(glob(s:config_dir."*", 0, 1), "fnamemodify(v:val, ':t')"), "\n")
 
-    elseif stridx("get", get(s:relCmdLine, 1)) == 0
+    elseif stridx("get", get(relCmdLine, 1)) == 0
       " ************************** "
       " Complete the 'get' command "
       " ************************** "
@@ -235,7 +245,7 @@ function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
       endif
       return ""
 
-    elseif stridx("set", get(s:relCmdLine, 1)) == 0
+    elseif stridx("set", get(relCmdLine, 1)) == 0
       " ************************** "
       " Complete the 'set' command "
       " ************************** "
@@ -244,7 +254,7 @@ function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
       endif
       return "w\np\nf\n-magic"
 
-    elseif stridx("text", get(s:relCmdLine, 1)) == 0
+    elseif stridx("text", get(relCmdLine, 1)) == 0
       " *************************** "
       " Complete the 'text' command "
       " *************************** "
@@ -253,25 +263,25 @@ function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
       endif
       return ""
 
-    elseif stridx("write", get(s:relCmdLine, 1)) == 0
+    elseif stridx("write", get(relCmdLine, 1)) == 0
       " **************************** "
       " Complete the 'write' command "
       " **************************** "
       if a:ArgLead != ""
-        if len(s:relCmdLine) == 2 && a:ArgLead != ""
+        if len(relCmdLine) == 2
           return "write"
         endif
-      elseif len(s:relCmdLine) > 2 && a:ArgLead == ""
+      elseif len(relCmdLine) > 2
         " Do not return more than one file name
         return ""
       endif
-      let s:cfgdir = s:FindConfigDir()
-      if s:cfgdir == ""
+      let s:config_dir = s:FindConfigDir()
+      if s:config_dir == ""
         return ""
       endif
-      return join(map(glob(s:cfgdir."*", 0, 1), "fnamemodify(v:val, ':t')"), "\n")
+      return join(map(glob(s:config_dir."*", 0, 1), "fnamemodify(v:val, ':t')"), "\n")
 
-    elseif get(s:relCmdLine, -1) == s:Name
+    elseif get(relCmdLine, -1) == command_name
       " ************************** "
       " Complete the first command "
       " ************************** "
@@ -281,7 +291,7 @@ function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
     endif
 
   finally
-    unlet! s:relCmdLine s:Name s:cfgdir
+    unlet! s:config_dir
   endtry
 endfunction
 
@@ -290,6 +300,6 @@ if !exists(":C4ctrl")
   " ********************** "
   " Add our command to Vim "
   " ********************** "
-  command -nargs=+ -complete=custom,s:C4ctrlCompletion -range=% C4ctrl call C4ctrl(<f-args>)
+  command -nargs=+ -complete=custom,s:C4ctrlCompletion -range=% C4ctrl call C4ctrl(getcurpos(), <f-mods>, <line1>, <line2>, <f-args>)
 endif
 
