@@ -5,7 +5,8 @@
 " Maintainer: Shy
 " License: This file is placed in the public domain.
 "
-" Usage: C4ctrl [get | open PRESET | set [w] [p] [f] [-magic] | text | write]
+" Usage: C4ctrl [get | open PRESET | set [w] [p] [f] [-magic] | text |
+"                write PRESET]
 
 if exists("g:loaded_c4ctrl")
   finish
@@ -131,11 +132,12 @@ function C4ctrl(prev_cursor_pos, mods, first_line, last_line, command, ...) rang
 
     for i in range(a:0)
       let  arg = a:000[i]
-      if strchars(arg) == 1
-        if stridx("wpf", arg) != -1
-          let command_line = printf("%s -%s -", command_line, arg)
+      for room in ["wohnzimmer", "plenarsaal", "fnordcenter"]
+        if stridx(room, arg) == 0
+          let command_line = printf("%s -%s -", command_line, arg[0])
         endif
-      elseif stridx("-magic", arg) == 0
+      endfor
+      if stridx("-magic", arg) == 0
         let command_line = printf("%s --magic", command_line)
       endif
     endfor
@@ -204,8 +206,8 @@ function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
 
   " The name of the command we are adding to Vim
   let command_name = "C4ctrl"
-  " A list of current cmd line arguments
-  let command_line = split(a:CmdLine)
+  " A list of current cmd line arguments, starting from the first letter
+  let command_line = split(strpart(a:CmdLine, match(a:CmdLine, "[A-Z]")))
   " Check out if our name was abbreviated and modify accordingly
   while index(command_line, command_name) == -1
     let command_name = strpart(command_name, 0, len(command_name) - 1) 
@@ -222,9 +224,9 @@ function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
       " *************************** "
       " Complete the 'open' command "
       " *************************** "
-      " ^ Note: the seconds part of the if rule (the part after '||') will
-      " eval to true if a filename matches our command name better than the
-      " actually given command name (eg. ':C4 open C4c')
+      " ^ Note: the seconds part of the if rule above (the part after '||')
+      " will eval to true if a filename matches our command name better than
+      " the actually given command name (eg. ':C4 open C4c')
       if a:ArgLead != ""
         if len(command_line) == command_index + 2
           return "open"
@@ -255,7 +257,7 @@ function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
       if a:ArgLead != ""
         return "set\n-magic"
       endif
-      return "w\np\nf\n-magic"
+      return "wohnzimmer\nplenarsaal\nfnordcenter\n-magic"
 
     elseif stridx("text", get(command_line, command_index + 1)) == 0
       " *************************** "
@@ -270,9 +272,9 @@ function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
       " **************************** "
       " Complete the 'write' command "
       " **************************** "
-      " ^ Note: the seconds part of the if rule (the part after '||') will
-      " eval to true if a filename matches our command name better than the
-      " actually given command name (eg. ':C4 open C4c')
+      " ^ Note: the seconds part of the if rule above (the part after '||')
+      " will eval to true if a filename matches our command name better than
+      " the actually given command name (eg. ':C4 open C4c')
       if a:ArgLead != ""
         if len(command_line) == command_index + 2
           return "write"
