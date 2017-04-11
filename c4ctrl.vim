@@ -204,29 +204,32 @@ function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
 
   " The name of the command we are adding to Vim
   let command_name = "C4ctrl"
-  " A list of current cmd line arguments excluding leading mods like
-  " :vertical, :tab etc.
-  let relCmdLine = split(a:CmdLine)
-  " User may have abbreviated our command name
-  while index(relCmdLine, command_name) == -1
-    let command_name = strpart(command_name, 0, len(command_name)-1) 
+  " A list of current cmd line arguments
+  let command_line = split(a:CmdLine)
+  " Check out if our name was abbreviated and modify accordingly
+  while index(command_line, command_name) == -1
+    let command_name = strpart(command_name, 0, len(command_name) - 1) 
     if len(command_name) == 0
       " This should never happen, but let's not risk an infinite loop anyway
       return ""
     endif
   endwhile
-  let relCmdLine = relCmdLine[index(relCmdLine, command_name):]
+  " Position of our command in the command line
+  let command_index = index(command_line, command_name)
 
   try " We use the matching finally for cleaning up
-    if stridx("open", get(relCmdLine, 1)) == 0
+    if stridx("open", get(command_line, command_index + 1)) == 0 || (len(command_line) == command_index + 1 && a:ArgLead == command_name)
       " *************************** "
       " Complete the 'open' command "
       " *************************** "
+      " ^ Note: the seconds part of the if rule (the part after '||') will
+      " eval to true if a filename matches our command name better than the
+      " actually given command name (eg. ':C4 open C4c')
       if a:ArgLead != ""
-        if len(relCmdLine) == 2
+        if len(command_line) == command_index + 2
           return "open"
         endif
-      elseif len(relCmdLine) > 2
+      elseif len(command_line) > command_index + 2
         " Do not return more than one file name
         return ""
       endif
@@ -236,7 +239,7 @@ function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
       endif
       return join(map(glob(s:config_dir."*", 0, 1), "fnamemodify(v:val, ':t')"), "\n")
 
-    elseif stridx("get", get(relCmdLine, 1)) == 0
+    elseif stridx("get", get(command_line, command_index + 1)) == 0
       " ************************** "
       " Complete the 'get' command "
       " ************************** "
@@ -245,7 +248,7 @@ function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
       endif
       return ""
 
-    elseif stridx("set", get(relCmdLine, 1)) == 0
+    elseif stridx("set", get(command_line, command_index + 1)) == 0
       " ************************** "
       " Complete the 'set' command "
       " ************************** "
@@ -254,7 +257,7 @@ function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
       endif
       return "w\np\nf\n-magic"
 
-    elseif stridx("text", get(relCmdLine, 1)) == 0
+    elseif stridx("text", get(command_line, command_index + 1)) == 0
       " *************************** "
       " Complete the 'text' command "
       " *************************** "
@@ -263,15 +266,18 @@ function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
       endif
       return ""
 
-    elseif stridx("write", get(relCmdLine, 1)) == 0
+    elseif stridx("write", get(command_line, command_index + 1)) == 0 || (len(command_line) == command_index + 1 && a:ArgLead == command_name)
       " **************************** "
       " Complete the 'write' command "
       " **************************** "
+      " ^ Note: the seconds part of the if rule (the part after '||') will
+      " eval to true if a filename matches our command name better than the
+      " actually given command name (eg. ':C4 open C4c')
       if a:ArgLead != ""
-        if len(relCmdLine) == 2
+        if len(command_line) == command_index + 2
           return "write"
         endif
-      elseif len(relCmdLine) > 2
+      elseif len(command_line) > command_index + 2
         " Do not return more than one file name
         return ""
       endif
@@ -281,7 +287,7 @@ function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
       endif
       return join(map(glob(s:config_dir."*", 0, 1), "fnamemodify(v:val, ':t')"), "\n")
 
-    elseif get(relCmdLine, -1) == command_name
+    elseif len(command_line) == command_index + 1
       " ************************** "
       " Complete the first command "
       " ************************** "
