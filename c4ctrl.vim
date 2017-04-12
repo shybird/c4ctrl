@@ -1,7 +1,7 @@
-" This Vim plugin makes some functionality of the c4ctrl utility available
-" from within Vim.
+" c4ctrl.vim: This Vim plugin makes some functionality of the c4ctrl command
+"             line utility available from within Vim.
 "
-" Last Change: 2017 Apr 11
+" Last Change: 2017 Apr 12
 " Maintainer: Shy
 " License: This file is placed in the public domain.
 "
@@ -15,12 +15,12 @@ let g:loaded_c4ctrl = 1
 
 
 function s:FindConfigDir()
-  " ************************************************ "
-  " Returns the path of the configuration directory, "
-  " eg. '/home/somepony/.config/c4ctrl/'             "
-  " ************************************************ "
+  " ************************************************************************ "
+  " Returns the path of c4ctrl configuration directory as string,            "
+  " eg. '/home/somepony/.config/c4ctrl/'.                                    "
+  " ************************************************************************ "
 
-  " Run only once
+  " Return early if this function has already been run.
   if exists("s:config_dir")
     return s:config_dir
   endif
@@ -32,7 +32,9 @@ function s:FindConfigDir()
   endif
 
   if !isdirectory(s:config_dir)
-    echo "Could not access config dir:" s:config_dir
+    redraw | echohl WarningMsg
+    echo "Error: could not access config directory:" s:config_dir."!"
+    echohl None
     return ""
   endif
   return s:config_dir
@@ -40,173 +42,202 @@ endfunction
 
 
 function C4ctrl(prev_cursor_pos, mods, first_line, last_line, command, ...) range
-  " *********************************************************************** "
-  " Make some functionality of the 'c4ctrl' command line utility available  "
-  " from within Vim.                                                        "
-  " Available commands are 'get', 'open', 'set', 'text' and 'write'.        "
-  " Arguments:                                                              "
-  "   prev_cursor_pos   -- cursor position as returned by getcurpos()       "
-  "   mods              -- modifiers (:command variable <f-mods>)           "
-  "   first_line        -- first line of range (:command <line1>            "
-  "   last_line         -- last line of range (:command <line2>             "
-  "   command           -- user command ('get', 'set' etc.)                 "
-  "   [command options] -- optional command options                         "
-  " *********************************************************************** "
+  " ************************************************************************ "
+  " Make some functionality of the 'c4ctrl' command line utility available   "
+  " from within Vim.                                                         "
+  " Available commands are 'get', 'open', 'set', 'text' and 'write'.         "
+  " Arguments:                                                               "
+  "   prev_cursor_pos   -- cursor position as returned by getcurpos()        "
+  "   mods              -- modifiers (:command variable <f-mods>)            "
+  "   first_line        -- first line of range (:command <line1>)            "
+  "   last_line         -- last line of range (:command <line2>)             "
+  "   command           -- user command ('get', 'set' etc.)                  "
+  "   [...]             -- optional command options                          "
+  " ************************************************************************ "
 
-  " Name of the executable.
-  let s:c4ctrl = "c4ctrl"
+  try " We utilize the finally section to delete some variables and functions.
+    " Name of the executable.
+    let s:c4ctrl = "c4ctrl"
+  
+    function! s:SynHighlight()
+      " ******************************************************************** "
+      " This function will be called after a preset has been loaded into the "
+      " buffer. It will be deleted at the end of C4ctrl().                   "
+      " ******************************************************************** "
+  
+      " Match topics
+      syn match Identifier "^\s*\%(\w*/\?\)\+\ze\s*="
+      " Match color values with 3 digits
+      syn match Number "=\s*\zs\%(\s*\x\)\{3}"
+      " Match color values with 6 digits
+      syn match Number "=\s*\zs\%(\s*\x\)\{6}"
+      " Match comments
+      syn match Comment "^\s*#.*" 
+      " Match error: too few digits
+      syn match Error "=\s*\zs\x\{1,2}\s*$"
+      " Match error: invalid chars as digit
+      syn match Error "=\s*\zs.*[^[:blank:][:xdigit:]]\+.*"
+      "syn match Error "=\s*\zs.*\%(\S\&\X\)\+.*"
 
-  " This function will be called after a preset file has been loaded
-  " into the buffer.
-  function! s:SynHighlight()
-    " Match topics
-    syn match Identifier "\c^\s*[0-9a-z/]*\ze\s*="
-    " Match color values with 3 digits
-    syn match Number "\c=\s*\zs\(\s*[0-9a-f]\)\{3}"
-    " Match color values with 6 digits
-    syn match Number "\c=\s*\zs\(\s*[0-9a-f]\)\{6}"
-    " Match comments
-    syn match Comment "^\s*[#!\"].*" 
-    " Match error: too few digits
-    syn match Error "\c=\s*\zs[0-9a-f]\{1,2}$"
-    " Match error: invalid chars as digit
-    syn match Error "\c=\s*\zs.*[^ \t0-9a-f]\+.*"
-  endfunction
-
-  " Check if we can excute c4ctrl or c4ctrl.py and modify the variable
-  " s:c4ctrl accordingly
-  if !executable(s:c4ctrl)
-    " Maybe we just need to add .py to the command?
-    if executable(s:c4ctrl.".py")
-      let s:c4ctrl .= ".py"
-    else
-      echoerr "Executable not found! Please put \"".s:c4ctrl."\" into your $PATH."
-      unlet s:c4ctrl
-      return
+      " Move the cursor somewhere more practical.
+      call cursor(1,1)
+      call search("^[^#].*=[ \t]*[0-9a-fA-F]", 'eW')
+    endfunction
+  
+    " Check if we can excute c4ctrl or c4ctrl.py and modify the variable
+    " s:c4ctrl accordingly.
+    if !executable(s:c4ctrl)
+      " Maybe we just need to add .py to the command?
+      if executable(s:c4ctrl.".py")
+        let s:c4ctrl .= ".py"
+      else
+        redraw | echohl WarningMsg
+        echo "Executable not found! Please put \"".s:c4ctrl."\" into your $PATH."
+        echohl None
+        unlet s:c4ctrl
+        return
+      endif
     endif
-  endif
-
-  if stridx("get", a:command) == 0
-    " *********************************** "
-    " Read current status into new buffer "
-    " *********************************** "
-    execute a:mods "new"
-    silent execute "0 read !" s:c4ctrl "-o -"
-    normal 0gg
-    call s:SynHighlight()
-
-  elseif stridx("open", a:command) == 0
-    " ********************** "
-    " Edit an exiting preset "
-    " ********************** "
-    if !exists("a:1")
-      echo "Missing filename!"
-      return
-    endif
-
-    let s:config_dir = s:FindConfigDir()
-    if s:config_dir == ""
-      return
-    endif
-    let filename = s:config_dir . a:1
-    if !filereadable(filename)
-      echoerr "Error: could not open file" filename
-      return
-    endif
-
-    execute a:mods "new"
-    execute "edit" fnameescape(filename)
-    call s:SynHighlight()
-
-  elseif stridx("set", a:command) == 0
-    " ****************************** "
-    " Set preset from current buffer "
-    " ****************************** "
-
-    " Let's start by building a command line
-    let command_line = s:c4ctrl
-    if a:0 == 0
-      " If no room is given, set colors for all rooms
-      let command_line .= " -w - -p - -f -"
-    endif
-
-    for i in range(a:0)
-      let  arg = a:000[i]
-      for room in ["wohnzimmer", "plenarsaal", "fnordcenter"]
-        if stridx(room, arg) == 0
-          let command_line = printf("%s -%s -", command_line, arg[0])
+  
+    if stridx("get", a:command) == 0
+      " *********************************** "
+      " Read current status into new buffer "
+      " *********************************** "
+      execute a:mods "new"
+      silent execute "0 read !" s:c4ctrl "-o -"
+      if v:shell_error == 0
+        call s:SynHighlight()
+        set nomodified " Mark unmodified.
+      else
+        redraw | echohl WarningMsg
+        echo printf("Error: %s returned exit code %d!", s:c4ctrl, v:shell_error)
+        echohl None
+      endif
+  
+    elseif stridx("open", a:command) == 0
+      " ********************** "
+      " Edit an exiting preset "
+      " ********************** "
+      if !exists("a:1")
+        redraw | echohl WarningMsg
+        echo "Missing filename!"
+        echohl None
+        return
+      endif
+  
+      let s:config_dir = s:FindConfigDir()
+      if s:config_dir == ""
+        return
+      endif
+      let filename = s:config_dir . a:1
+      if !filereadable(filename)
+        redraw | echohl WarningMsg
+        echo "Error: could not open file" filename
+        echohl None
+        return
+      endif
+  
+      execute a:mods "new"
+      execute "edit" fnameescape(filename)
+      call s:SynHighlight()
+  
+    elseif stridx("set", a:command) == 0
+      " ****************************** "
+      " Set preset from current buffer "
+      " ****************************** "
+      " Let's start by building a command line.
+      let command_line = s:c4ctrl
+      let rooms_given = 0
+  
+      for i in range(a:0)
+        let  arg = a:000[i]
+        for room in ["wohnzimmer", "plenarsaal", "fnordcenter"]
+          if stridx(room, arg) == 0
+            let command_line = printf("%s -%s -", command_line, arg[0])
+            let rooms_given = 1
+          endif
+        endfor
+        if stridx("-magic", arg) == 0
+          let command_line = printf("%s --magic", command_line)
         endif
       endfor
-      if stridx("-magic", arg) == 0
-        let command_line = printf("%s --magic", command_line)
+  
+      if rooms_given == 0
+        " If no room is given, set colors for all rooms.
+        let command_line .= " -w - -p - -f -"
       endif
-    endfor
-
-    silent let ret = system(command_line, getline(a:first_line, a:last_line))
-
-    " Restore cursor position
-    call setpos('.', a:prev_cursor_pos)
-
-  elseif stridx("text", a:command) == 0
-    " ********************************************** "
-    " Send line under the cursor to the Kitchenlight "
-    " ********************************************** "
-
-    " Strip any ','
-    let txt = substitute(getline("."), ",", "", "g")
-    let ret = system(printf("%s -k text,%s", s:c4ctrl, shellescape(txt)))
-
-  elseif stridx("write", substitute(a:command, "!$", "", "")) == 0
-    " ********************************* "
-    " Save preset into config directory "
-    " ********************************* "
-    if !exists("a:1")
-      echo "Missing filename!"
-      return
-    endif
-
-    let s:config_dir = s:FindConfigDir()
-    if s:config_dir == ""
-      return
-    endif
-
-    let filename = s:config_dir . a:1
-
-    if strridx(a:command, "!") + 1 == len(a:command)
-      " Force if a '!' was appended to the command
-      execute "saveas!" fnameescape(filename)
+  
+      silent let ret = system(command_line, getline(a:first_line, a:last_line))
+  
+      " Restore cursor position.
+      call setpos('.', a:prev_cursor_pos)
+  
+    elseif stridx("text", a:command) == 0
+      " ********************************************** "
+      " Send line under the cursor to the Kitchenlight "
+      " ********************************************** "
+      " Strip any ','.
+      let txt = substitute(getline("."), ",", "", "g")
+      let ret = system(printf("%s -k text,%s", s:c4ctrl, shellescape(txt)))
+  
+    elseif stridx("write", substitute(a:command, "!$", "", "")) == 0
+      " ********************************* "
+      " Save preset into config directory "
+      " ********************************* "
+      if !exists("a:1")
+        redraw | echohl WarningMsg
+        echo "Missing filename!"
+        echohl None
+        return
+      endif
+  
+      let s:config_dir = s:FindConfigDir()
+      if s:config_dir == ""
+        return
+      endif
+  
+      let filename = s:config_dir . a:1
+  
+      if strridx(a:command, "!") + 1 == len(a:command)
+        " Force if a '!' was appended to the command.
+        execute "saveas!" fnameescape(filename)
+      else
+        execute "saveas" fnameescape(filename)
+      endif
+  
     else
-      execute "saveas" fnameescape(filename)
+      " ****************** "
+      " Unknown command oO "
+      " ****************** "
+      redraw | echohl WarningMsg
+      echo "Unknown command:" a:command
+      echohl None
+      echo "Valid commands are get, open, set, text and write"
     endif
-
-  else
-    " ****************** "
-    " Unknown command oO "
-    " ****************** "
-    echo "Unknown command:" a:command
-    echo "Valid commands are get, open, set, text and write"
-  endif
-
-  " Echo return if shell exited with an error
-  if v:shell_error
-    if exists("ret")
-      echoerr ret
+  
+    " Echo return if shell exited with an error.
+    if v:shell_error
+      if exists("ret")
+        echoerr ret
+      endif
     endif
-  endif
-
-  unlet! s:c4ctrl s:config_dir
-  delfunction s:SynHighlight
+  
+  finally
+    unlet! s:c4ctrl s:config_dir
+    delfunction s:SynHighlight
+  endtry
 endfunction
 
 
 function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
-  " ****************************** "
-  " Custom command line completion "
-  " ****************************** "
+  " ************************************************************************ "
+  " Custom command line completion.                                          "
+  " ************************************************************************ "
 
-  " The name of the command we are adding to Vim
+  " The name of the command we are adding to Vim.
   let command_name = "C4ctrl"
-  " A list of current cmd line arguments, starting from the first letter
+  " A list of current cmd line arguments, stripping everything up to the
+  " first capital.
   let command_line = split(strpart(a:CmdLine, match(a:CmdLine, "[A-Z]")))
   " Check out if our name was abbreviated and modify accordingly
   while index(command_line, command_name) == -1
@@ -216,23 +247,26 @@ function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
       return ""
     endif
   endwhile
-  " Position of our command in the command line
+  " Position of our command in the command line.
   let command_index = index(command_line, command_name)
 
-  try " We use the matching finally for cleaning up
+  try " We use the matching finally for cleaning up.
+    if len(command_line) == command_index + 1 || (len(command_line) == command_index + 2 && a:ArgLead != "")
+      " ************************** "
+      " Complete the prime command "
+      " ************************** "
+      return "get\nopen\nset\ntext\nwrite"
+    endif
+
     if stridx("open", get(command_line, command_index + 1)) == 0 || (len(command_line) == command_index + 1 && a:ArgLead == command_name)
       " *************************** "
       " Complete the 'open' command "
       " *************************** "
       " ^ Note: the seconds part of the if rule above (the part after '||')
-      " will eval to true if a filename matches our command name better than
-      " the actually given command name (eg. ':C4 open C4c')
-      if a:ArgLead != ""
-        if len(command_line) == command_index + 2
-          return "open"
-        endif
-      elseif len(command_line) > command_index + 2
-        " Do not return more than one file name
+      " will eval to true whenever a filename matches our command name better
+      " than the actually given command name (eg. ':C4 open C4c').
+      if len(command_line) > command_index + 3 || (len(command_line) == command_index + 3 && a:ArgLead == "")
+        " Do not return more than one file name.
         return ""
       endif
       let s:config_dir = s:FindConfigDir()
@@ -245,27 +279,18 @@ function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
       " ************************** "
       " Complete the 'get' command "
       " ************************** "
-      if a:ArgLead != ""
-        return "get"
-      endif
       return ""
 
     elseif stridx("set", get(command_line, command_index + 1)) == 0
       " ************************** "
       " Complete the 'set' command "
       " ************************** "
-      if a:ArgLead != ""
-        return "set\n-magic"
-      endif
       return "wohnzimmer\nplenarsaal\nfnordcenter\n-magic"
 
     elseif stridx("text", get(command_line, command_index + 1)) == 0
       " *************************** "
       " Complete the 'text' command "
       " *************************** "
-      if a:ArgLead != ""
-        return "text"
-      endif
       return ""
 
     elseif stridx("write", get(command_line, command_index + 1)) == 0 || (len(command_line) == command_index + 1 && a:ArgLead == command_name)
@@ -273,14 +298,10 @@ function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
       " Complete the 'write' command "
       " **************************** "
       " ^ Note: the seconds part of the if rule above (the part after '||')
-      " will eval to true if a filename matches our command name better than
-      " the actually given command name (eg. ':C4 open C4c')
-      if a:ArgLead != ""
-        if len(command_line) == command_index + 2
-          return "write"
-        endif
-      elseif len(command_line) > command_index + 2
-        " Do not return more than one file name
+      " will eval to true whenever a filename matches our command name better
+      " than the actually given command name (eg. ':C4 open C4c').
+      if len(command_line) > command_index + 3 || (len(command_line) == command_index + 3 && a:ArgLead == "")
+        " Do not return more than one file name.
         return ""
       endif
       let s:config_dir = s:FindConfigDir()
@@ -289,11 +310,6 @@ function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
       endif
       return join(map(glob(s:config_dir."*", 0, 1), "fnamemodify(v:val, ':t')"), "\n")
 
-    elseif len(command_line) == command_index + 1
-      " ************************** "
-      " Complete the first command "
-      " ************************** "
-      return "get\nopen\nset\ntext\nwrite"
     else
       return ""
     endif
