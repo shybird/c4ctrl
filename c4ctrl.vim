@@ -65,8 +65,9 @@ function C4ctrl(prev_cursor_pos, mods, first_line, last_line, command, ...) rang
       " buffer. It will be deleted at the end of C4ctrl().                   "
       " ******************************************************************** "
   
+      syn clear
       " Match topics
-      syn match Identifier "^\s*\%(\w*/\?\)\+\ze\s*="
+      syn match Identifier "^\s*[[:alnum:]/]\+\ze\s*="
       " Match color values with 3 digits
       syn match Number "=\s*\zs\%(\s*\x\)\{3}"
       " Match color values with 6 digits
@@ -107,7 +108,7 @@ function C4ctrl(prev_cursor_pos, mods, first_line, last_line, command, ...) rang
       silent execute "0 read !" s:c4ctrl "-o -"
       if v:shell_error == 0
         call s:SynHighlight()
-        set nomodified " Mark unmodified.
+        set nomodified " Mark as unmodified.
       else
         redraw | echohl WarningMsg
         echo printf("Error: %s returned exit code %d!", s:c4ctrl, v:shell_error)
@@ -204,6 +205,7 @@ function C4ctrl(prev_cursor_pos, mods, first_line, last_line, command, ...) rang
       else
         execute "saveas" fnameescape(filename)
       endif
+      call s:SynHighlight()
   
     else
       " ****************** "
