@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# kitchentext: Read text from stdin and put it on the Kitchenlight
+# kitchentext: Read text from stdin and put it on the Kitchenlight.
 
 def kitchentext(delay=200, single=False, wait=False, restore=False, poweron=False,
         verbose=False, debug=False):
@@ -8,7 +8,7 @@ def kitchentext(delay=200, single=False, wait=False, restore=False, poweron=Fals
     import sys
     from c4ctrl import C4Interface, Kitchenlight
 
-    charwidth = { # Width of characters
+    charwidth = { # Width of characters.
         'a' : 5, 'A' : 5, 'b' : 4, 'B' : 5,
         'c' : 3, 'C' : 5, 'd' : 4, 'D' : 5,
         'e' : 4, 'E' : 5, 'f' : 3, 'F' : 5,
@@ -38,39 +38,36 @@ def kitchentext(delay=200, single=False, wait=False, restore=False, poweron=Fals
     C4Interface.debug = debug
     kl = Kitchenlight(autopower=poweron)
 
-    # Enforce wait=True if restore=True or single=False
+    # Enforce wait=True if restore=True or single=False.
     wait = wait or restore or not single
 
-    # Store previous state
+    # Store previous state.
     if restore:
         c4 = C4Interface()
         safe = c4.pull([kl.topic, kl.powertopic])
 
     try:
-        stop = False
-        while not stop:
-            # Only itarate once if single is set
-            stop = single
+        while True:
 
             try:
                 text = sys.stdin.readline()
-            except KeyboardInterrupt: # Exit a bit more graceful on CTRL-C
+            except KeyboardInterrupt: # Exit a bit more graceful on CTRL-C.
                 verbose and sys.stderr.write("\rInterrupted by user\n")
                 sys.exit(1)
 
             if single and text.rstrip('\n') == "":
                 verbose and sys.stderr.write("Error: empty input!\n")
                 sys.exit(1)
-            elif text == "\n": # Empty line
+            elif text == "\n": # Empty line.
                 verbose and print("Info: skipping empty line")
                 continue
-            elif text == "": # EOF
+            elif text == "": # EOF.
                 break
 
-            # Strip chars Kitchenlight can not display
+            # Strip chars Kitchenlight can not display.
             text = text.rstrip('\n').encode("ascii", "ignore").decode("ascii")
 
-            try: # We might well get interrupted while waiting
+            try: # We might well get interrupted while waiting.
                 kl.text(text, delay)
 
                 if wait:
@@ -93,7 +90,7 @@ def kitchentext(delay=200, single=False, wait=False, restore=False, poweron=Fals
                 sys.exit(1)
 
     finally:
-        # Always restore privious state if "restore" is set
+        # Always restore privious state if "restore" is set.
         if restore:
             re = []
             for top in safe: re.append((top.topic, top.payload))
@@ -121,12 +118,24 @@ if __name__ == "__main__":
         "-p", "--power-on", action="store_true", default=False,
         help="turn on Kitchenlight if it is powered off")
     parser.add_argument(
+        "-f", "--fork", action="store_true",
+        help="fork to background")
+    parser.add_argument(
         "-v", "--verbose", action="store_true",
         help="be (not much) more verbose")
     parser.add_argument(
         "--debug", action="store_true",
         help="display what would be send to the MQTT broker, but do not actually connect")
     args = parser.parse_args()
+
+    if args.fork:
+        import sys
+        from posix import fork
+
+        child_pid = fork()
+        if child_pid != 0:
+            args.verbose and print("Forked to PID", child_pid)
+            sys.exit()
 
     kitchentext(delay=args.delay,
                 single=args.single,
