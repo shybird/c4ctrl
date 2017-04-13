@@ -1,11 +1,11 @@
 " c4ctrl.vim: This Vim plugin makes some functionality of the c4ctrl command
 "             line utility available from within Vim.
 "
-" Last Change: 2017 Apr 12
+" Last Change: 2017 Apr 13
 " Maintainer: Shy
 " License: This file is placed in the public domain.
 "
-" Usage: C4ctrl [get | open PRESET | set [w] [p] [f] [-magic] | text |
+" Usage: C4ctrl [get | kitchentext | open PRESET | set [w] [p] [f] [-magic] |
 "                write PRESET]
 
 if exists("g:loaded_c4ctrl")
@@ -20,7 +20,7 @@ function s:FindConfigDir()
   " eg. '/home/somepony/.config/c4ctrl/'.                                    "
   " ************************************************************************ "
 
-  " Return early if this function has already been run.
+  " Return early if we already know it from an earlier invocation.
   if exists("s:config_dir")
     return s:config_dir
   endif
@@ -45,7 +45,7 @@ function C4ctrl(prev_cursor_pos, mods, first_line, last_line, command, ...) rang
   " ************************************************************************ "
   " Make some functionality of the 'c4ctrl' command line utility available   "
   " from within Vim.                                                         "
-  " Available commands are 'get', 'open', 'set', 'text' and 'write'.         "
+  " Available commands are 'get', 'kitchentext', 'open', 'set' and 'write'.  "
   " Arguments:                                                               "
   "   prev_cursor_pos   -- cursor position as returned by getcurpos()        "
   "   mods              -- modifiers (:command variable <f-mods>)            "
@@ -115,6 +115,24 @@ function C4ctrl(prev_cursor_pos, mods, first_line, last_line, command, ...) rang
         echohl None
       endif
   
+    elseif stridx("kitchentext", a:command) == 0
+      " ************************************** "
+      " Send text in range to the Kitchenlight "
+      " ************************************** "
+      let kitchentext = "kitchentext"
+      if !executable(kitchentext)
+        redraw | echohl WarningMsg
+        echo "Executable not found! Please put \"".kitchentext."\" into your $PATH."
+        echohl None
+        return
+      endif
+
+      let command_line = "kitchentext -f -d 150 -r -p"
+      " Strip leading white spaces.
+      let text = getline(a:first_line, a:last_line)
+      call map(text, "substitute(v:val, '^[ \t]*', '', '')")
+      let ret = system(command_line, text)
+  
     elseif stridx("open", a:command) == 0
       " ********************** "
       " Edit an exiting preset "
@@ -173,14 +191,6 @@ function C4ctrl(prev_cursor_pos, mods, first_line, last_line, command, ...) rang
       " Restore cursor position.
       call setpos('.', a:prev_cursor_pos)
   
-    elseif stridx("text", a:command) == 0
-      " ********************************************** "
-      " Send line under the cursor to the Kitchenlight "
-      " ********************************************** "
-      " Strip any ','.
-      let txt = substitute(getline("."), ",", "", "g")
-      let ret = system(printf("%s -k text,%s", s:c4ctrl, shellescape(txt)))
-  
     elseif stridx("write", substitute(a:command, "!$", "", "")) == 0
       " ********************************* "
       " Save preset into config directory "
@@ -214,7 +224,7 @@ function C4ctrl(prev_cursor_pos, mods, first_line, last_line, command, ...) rang
       redraw | echohl WarningMsg
       echo "Unknown command:" a:command
       echohl None
-      echo "Valid commands are get, open, set, text and write"
+      echo "Valid commands are get, kitchentext, open, set and write"
     endif
   
     " Echo return if shell exited with an error.
@@ -257,7 +267,7 @@ function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
       " ************************** "
       " Complete the prime command "
       " ************************** "
-      return "get\nopen\nset\ntext\nwrite"
+      return "get\nkitchentext\nopen\nset\nwrite"
     endif
 
     if stridx("open", get(command_line, command_index + 1)) == 0 || (len(command_line) == command_index + 1 && a:ArgLead == command_name)
@@ -283,17 +293,17 @@ function s:C4ctrlCompletion(ArgLead, CmdLine, CursorPos)
       " ************************** "
       return ""
 
+    elseif stridx("kitchentext", get(command_line, command_index + 1)) == 0
+      " ********************************** "
+      " Complete the 'kitchentext' command "
+      " ********************************** "
+      return ""
+
     elseif stridx("set", get(command_line, command_index + 1)) == 0
       " ************************** "
       " Complete the 'set' command "
       " ************************** "
       return "wohnzimmer\nplenarsaal\nfnordcenter\n-magic"
-
-    elseif stridx("text", get(command_line, command_index + 1)) == 0
-      " *************************** "
-      " Complete the 'text' command "
-      " *************************** "
-      return ""
 
     elseif stridx("write", get(command_line, command_index + 1)) == 0 || (len(command_line) == command_index + 1 && a:ArgLead == command_name)
       " **************************** "
