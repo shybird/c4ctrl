@@ -5,7 +5,7 @@
 """
 A command line client for Autoc4, the home automation system of the C4.
 
-May be useful as python module for simple tasks.
+Run 'c4ctrl -h' for usage information.
 
 Dependencies:
     Paho Python Client
@@ -34,7 +34,7 @@ class C4Interface():
 
             message may be a byte encoded payload or a list of either dict()s
             or tuples()s. If message is a byte encoded payload, topic= must be
-            given. dict()s and tuple()s should lool like this:
+            given. dict()s and tuple()s should look like:
                 dict("topic": str(topic), "payload": bytes(payload))
                 tuple(str(topic), bytes(payload)) """
 
@@ -127,12 +127,12 @@ class C4Interface():
             return "closed"
 
     def open_gate(self):
-        """Open the gate."""
+        """ Open the gate. """
 
         self.push(None, topic="club/gate", retain=False)
 
     def shutdown(self, force=False):
-        """Invoke the shutdown routine.""" 
+        """ Invoke the shutdown routine. """ 
 
         if force:
             payload = b'\x44'
@@ -302,7 +302,7 @@ class Kitchenlight:
     def openchaos(self, delay=1000):
         """ Set to mode "openchaos".
 
-            delay = delay in milliseconds (default 1000) """
+            delay = delay in milliseconds (default 1000). """
 
         d = bytearray(8)
         v = memoryview(d)
@@ -331,13 +331,13 @@ class Kitchenlight:
     def text(self, text="Hello World", delay=250):
         """ Set to mode "text".
 
-            text (str < 256 bytes) = text to display (default "Hello World")
-            delay = delay in milliseconds (default 250) """
+            text (str < 256 bytes) = text to display (default "Hello World").
+            delay = delay in milliseconds (default 250). """
 
         text = text.encode("ascii", "ignore")
-        if len(text) > 256: # Maximum text length
-            print("Warning: text length must not exceed 256 characters!", file=sys.stderr)
-            text = text[:256]
+        if len(text) > 255: # Maximum text length
+            print("Warning: text length must not exceed 255 characters!", file=sys.stderr)
+            text = text[:255]
         d = bytearray(8 + len(text) + 1)
         v = memoryview(d)
         # Screen 8
@@ -735,7 +735,7 @@ class ColorScheme:
         if "XDG_CONFIG_DIR" in os.environ:
             XDG_CONFIG_DIR = os.environ["XDG_CONFIG_DIR"]
         else:
-            XDG_CONFIG_DIR = os.path.expanduser("~/.config")
+            XDG_CONFIG_DIR = os.path.expanduser(os.path.join("~", ".config"))
 
         # Does our config dir exist?
         config_dir = os.path.join(XDG_CONFIG_DIR, XDG_NAME)
