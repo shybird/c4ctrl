@@ -19,7 +19,7 @@ _arguments -s \
   '(-k --kl-mode)'{-k,--kl-mode}'[set Kitchenlight mode]:Kitchenlight mode:(off checker matrix mood oc pacman sine text flood clock)' \
   '(-i --list-kl-modes)'{-i,--list-kl-modes}'[list Kitchenlight modes)]' \
   '(-w --wohnzimmer)'{-w,--wohnzimmer}'[apply a preset to room Wohnzimmer]:preset:->presets_read' \
-  '(-p --plenarsaal)'{-p,--plenarsaal}'[apply a preset to room Plenarsaal]:prese->presets_read' \
+  '(-p --plenarsaal)'{-p,--plenarsaal}'[apply a preset to room Plenarsaal]:preset->presets_read' \
   '(-f --fnordcenter)'{-f,--fnordcenter}'[apply a preset to room Fnordcenter]:preset:->presets_read' \
   '(-m --magic)'{-m,--magic}'[use magic when switching presets]' \
   '(-l --list-presets)'{-l,--list-presets}'[list presets]' \
