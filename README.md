@@ -14,7 +14,7 @@ $ c4ctrl.py -h
 Kitchenlight utility script.
 
 ```
-$ kitchentext.py -h
+$ kitchentext -h
 ```
 
 ## c4ctrl.vim
@@ -41,5 +41,5 @@ Completion script for zsh.
 ### Installation
 
 Put *_c4ctrl* somewhere into *$fpath* (or alter *$fpath* in your *.zshrc*).
-See also: http://zsh.sourceforge.net/Doc/Release/Completion-System.html#Completion-Directories
+See also: [[http://zsh.sourceforge.net/Doc/Release/Completion-System.html#Completion-Directories]]
 
