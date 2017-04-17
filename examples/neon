@@ -1,7 +1,7 @@
 # "Neon" colorscheme for c4ctrl
 
-# Put this file into "$XDG_CONFIG_DIR/c4ctrl/" (likely "~/.config/c4ctrl/") to
-# make it available to c4ctrl.py. 
+# Put this file into "$XDG_CONFIG_HOME/c4ctrl/" (defaults to
+# "~/.config/c4ctrl/") to make it available to c4ctrl.py.
 
 # Wohnzimmer + Küche
 #dmx/wohnzimmer/master = 0033ff

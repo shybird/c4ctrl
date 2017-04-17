@@ -788,16 +788,16 @@ class ColorScheme:
 
         import os
         # The name of our config directory.
-        XDG_NAME = "c4ctrl"
+        _NAME = "c4ctrl"
 
-        # Get XDG_CONFIG_DIR from environment or set default.
-        if "XDG_CONFIG_DIR" in os.environ:
-            XDG_CONFIG_DIR = os.environ["XDG_CONFIG_DIR"]
+        # Get XDG_CONFIG_HOME from environment or set default.
+        if "XDG_CONFIG_HOME" in os.environ:
+            XDG_CONFIG_HOME = os.environ["XDG_CONFIG_HOME"]
         else:
-            XDG_CONFIG_DIR = os.path.expanduser(os.path.join("~", ".config"))
+            XDG_CONFIG_HOME = os.path.expanduser(os.path.join("~", ".config"))
 
         # Does our config dir exist?
-        config_dir = os.path.join(XDG_CONFIG_DIR, XDG_NAME)
+        config_dir = os.path.join(XDG_CONFIG_HOME, _NAME)
         if not os.path.isdir(config_dir):
             if create:
                 print("Creating config directory \"{}\"".format(config_dir))

@@ -25,8 +25,8 @@ function s:FindConfigDir() " {{{1
     return s:config_dir
   endif
 
-  if expand("$XDG_CONFIG_DIR") != "$XDG_CONFIG_DIR"
-    let s:config_dir = expand("$XDG_CONFIG_DIR/c4ctrl/")
+  if expand("$XDG_CONFIG_HOME") != "$XDG_CONFIG_HOME"
+    let s:config_dir = expand("$XDG_CONFIG_HOME/c4ctrl/")
   else
     let s:config_dir = expand("$HOME/.config/c4ctrl/")
   endif
