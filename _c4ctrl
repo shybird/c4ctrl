@@ -34,23 +34,23 @@ _arguments -s \
 
 case "$state" in
     presets*)
-        local ret=0 c4ctrl_cfg_dir
+        local ret=1 c4ctrl_cfg_dir
+
+        if [[ "$state" == "presets_read" ]]; then
+            # 'off' and 'random' are builtins and always 'readable'.
+            _values Presets 'off' 'random'
+            ret=$?
+        fi
         if [[ "$XDG_CONFIG_DIR" ]]; then
             c4ctrl_cfg_dir="$XDG_CONFIG_DIR/c4ctrl"
         else
             c4ctrl_cfg_dir="$HOME/.config/c4ctrl"
         fi
         if [[ -d "$c4ctrl_cfg_dir" ]]; then
-            if [[ "$state" == "presets_read" ]]; then
-                # 'off' and 'random' are builtins and always 'readable'.
-                _values Presets 'off' 'random'
-                ret=$?
-            fi
             _files -W "$c4ctrl_cfg_dir"
             ret=$((ret+?))
-            return ret
         fi
-        return 1
+        return ret
         ;;
 esac
 
