@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
-#                 \__/
-#                 /
-#         _______/
-#        /   ____\__
-#__     /   / __// / 
-#  \___/   / /  / /___  ____
-#__/   \   \ \__\_   / / __/____ __ _ 
-#       \   \___\ |_| / / |_   _|  \ |
-#        \_______/    \ \__ | ||   / |_
-#                \     \___\|_||_\_\___\
-#                 \__
-#                 /  \  c4ctrl: A command line
-#                 \__/  client for Autoc4
+#     ____ __
+#    / __// /
+#   / /  / /___  ____
+#   \ \__\_   / / __/____ __ _
+#    \___\ |_| / / |_   _|  \ |
+#              \ \__ | ||   / |_
+#               \___\|_||_\_\___\
+#
+# c4ctrl: A command line client for Autoc4.
+#
 # Author: Shy
 #
 # This program is free software: you can redistribute it and/or modify it under
@@ -33,12 +30,13 @@ A command line client for Autoc4, the home automation system of the C4.
 Run 'c4ctrl -h' for usage information.
 
 Dependencies:
-    Paho Python Client
-    (available from https://github.com/eclipse/paho.mqtt.python)
+    * Paho Python Client
+      (available from https://github.com/eclipse/paho.mqtt.python).
+    * Some parts will work on UNIX-like operating systems only.
 """
 
 import sys
-from random import choice # For client_id generation
+from random import choice # For client_id generation.
 
 
 class C4Interface():
@@ -48,11 +46,26 @@ class C4Interface():
     port = 1883
     qos = 2
     retain = True
-    # Generate a (sufficiently) unique client id
+    # Generate a (sufficiently) unique client id.
     client_id = "c4ctrl-" + "".join(
         choice("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
             for unused in range(16))
     debug = False
+
+    def on_permission_error(self, error):
+        """ Called when catching a PermissionDenied exception while connecting. """
+
+        print("Error: You don't have permission to connect to the broker.", file=sys.stderr)
+        print("Maybe you're not connected to the internal C4 network?", file=sys.stderr)
+        print(error, file=sys.stderr)
+        sys.exit(1)
+
+    def on_os_error(self, error):
+        """ Called when catching a OSError exception while connecting. """
+
+        print("Error: unable to open a network socket.", file=sys.stderr)
+        print(error, file=sys.stderr)
+        sys.exit(1)
 
     def push(self, message, topic=None, retain=None):
         """ Send a message to the MQTT broker.
@@ -65,14 +78,14 @@ class C4Interface():
 
         from paho.mqtt import publish
 
-        # Skip empty messages
+        # Skip empty messages.
         if message == [] or message == "": return
 
-        # Set defaults
+        # Set defaults.
         if retain == None: retain = self.retain
 
         if type(message) == list:
-            # Add <qos> and <retain> to every message
+            # Add <qos> and <retain> to every message.
             for item in message.copy():
                 if type(item) == dict:
                     item["qos"] = self.qos
@@ -90,23 +103,37 @@ class C4Interface():
             if self.debug: return print("[DEBUG] inhibited messages:",
                 message, file=sys.stderr)
 
-            publish.multiple(message,
-                    hostname=self.broker,
-                    port=self.port,
-                    client_id=self.client_id)
+            try:
+                publish.multiple(message,
+                        hostname=self.broker,
+                        port=self.port,
+                        client_id=self.client_id)
 
-        else: # Message is not a list
+            except PermissionError as error:
+               self.on_permission_error(error)
+
+            except OSError as error:
+               self.on_os_error(error)
+
+        else: # Message is not a list.
             if self.debug:
                 return print("[DEBUG] inhibited message to '{}': '{}'".format(
                         topic, message), file=sys.stderr)
 
-            publish.single(topic,
-                    payload=message,
-                    qos=self.qos,
-                    retain=retain,
-                    hostname=self.broker,
-                    port=self.port,
-                    client_id=self.client_id)
+            try:
+                publish.single(topic,
+                        payload=message,
+                        qos=self.qos,
+                        retain=retain,
+                        hostname=self.broker,
+                        port=self.port,
+                        client_id=self.client_id)
+
+            except PermissionError as error:
+               self.on_permission_error(error)
+
+            except OSError as error:
+               self.on_os_error(error)
 
     def pull(self, topic=[]):
         """ Return the state of a topic.
@@ -116,30 +143,37 @@ class C4Interface():
 
         from paho.mqtt import subscribe
 
-        # topic must be a list
+        # Convert topics of type string to a single item list.
         if type(topic) == str:
             topic = [topic]
 
-        # Skip empty queries
+        # Skip empty queries.
         if topic == []: return
 
         if self.debug:
             print("[DEBUG] inhibited query for:", topic, file=sys.stderr)
             return []
 
-        return subscribe.simple(topic,
-                msg_count=len(topic),
-                qos=self.qos,
-                hostname=self.broker,
-                port=self.port,
-                client_id=self.client_id)
+        try:
+            return subscribe.simple(topic,
+                    msg_count=len(topic),
+                    qos=self.qos,
+                    hostname=self.broker,
+                    port=self.port,
+                    client_id=self.client_id)
+
+        except PermissionError as error:
+           self.on_permission_error(error)
+
+        except OSError as error:
+           self.on_os_error(error)
 
     def status(self):
         """ Returns current status (string "open" or "closed") of the club. """
 
         club_status = self.pull("club/status")
 
-        # Create a fake result to prevent errors if in debug mode
+        # Create a fake result to prevent errors if in debug mode.
         if C4Interface.debug:
             print("[DEBUG] Warning: handing over fake data to allow for further execution!",
                 file=sys.stderr)
@@ -169,13 +203,13 @@ class C4Interface():
 class Kitchenlight:
     """ Interface to the Kitchenlight and its functions. """
 
-    _END = "little" # Kitchenlight endianess
+    _END = "little" # Kitchenlight endianess.
 
     def __init__(self, topic="kitchenlight/change_screen",
                        powertopic="power/wohnzimmer/kitchenlight",
                        autopower=True):
-        self.topic = topic # Kitchenlight topic
-        self.powertopic = powertopic # Topic for power on
+        self.topic = topic # Kitchenlight topic.
+        self.powertopic = powertopic # Topic for power on.
         self.autopower = autopower # Power on on every mode change?
 
     def _switch(self, data, poweron=False, poweroff=False):
@@ -206,13 +240,13 @@ class Kitchenlight:
         print("Available Kitchenlight modes (options are optional):")
         print("""
   off                                   turn off Kitchenlight
-  checker[,DELAY[,COLOR_1[,COLOR_2]]]   Checker
-  matrix[,LINES]                        Matrix
-  mood[,1|2] (1=Colorwheel, 2=Random)   Moodlight
-  oc[,DELAY]                            Open Chaos
+  checker [DELAY] [COLOR_1] [COLOR_2]   Checker
+  matrix [LINES]                        Matrix
+  mood [1|2] (1=Colorwheel, 2=Random)   Moodlight
+  oc [DELAY]                            Open Chaos
   pacman                                Pacman
   sine                                  Sine
-  text[,TEXT[,DELAY]]                   Text
+  text [TEXT] [DELAY]                   Text
   flood                                 Flood
   clock                                 Clock""")
 
@@ -257,7 +291,7 @@ class Kitchenlight:
             colA = first color (default 0000ff)
             colB = second color (default 00ff00) """
 
-        # Kind of a hack: lets treat the two colors as DMX lights
+        # Kind of a hack: lets treat the two colors as DMX lights.
         ca = Dmx("checker/a", colA.lstrip('#'))
         cb = Dmx("checker/b", colB.lstrip('#'))
         d = bytearray(20)
@@ -281,7 +315,7 @@ class Kitchenlight:
 
             lines (>0, <32) = number of lines (default 8) """
 
-        if int(lines) > 31: lines = 31 # Maximal line count
+        if int(lines) > 31: lines = 31 # Maximal line count.
         d = bytearray(8)
         v = memoryview(d)
         # Screen 2
@@ -294,7 +328,7 @@ class Kitchenlight:
 
             mode [1|2] = colorwheel(1) or random(2) """
 
-        if mode == 1: # Mode "Colorwheel"
+        if mode == 1: # Mode "Colorwheel".
             d = bytearray(19)
             v = memoryview(d)
             # Screen 3
@@ -309,7 +343,7 @@ class Kitchenlight:
             v[13:17] = int(10000).to_bytes(4, self._END)
             # Hue step
             v[17:19] = int(30).to_bytes(2, self._END)
-        else: # Mode "Random"
+        else: # Mode "Random".
             d = bytearray(17)
             v = memoryview(d)
             # Screen 3
@@ -360,7 +394,7 @@ class Kitchenlight:
             delay = delay in milliseconds (default 250). """
 
         text = text.encode("ascii", "ignore")
-        if len(text) > 255: # Maximum text length
+        if len(text) > 255: # Maximum text length.
             print("Warning: text length must not exceed 255 characters!", file=sys.stderr)
             text = text[:255]
         d = bytearray(8 + len(text) + 1)
@@ -388,13 +422,13 @@ class Kitchenlight:
 class Dmx:
     """ Abstraction of the 3 channel LED cans in the club. """
 
-    # 3 bytes for color, one each for red, green and blue
+    # 3 bytes for color, one each for red, green and blue.
     template = "000000"
 
     def __init__(self, topic, color=None):
         self.topic = topic
         self.set_color(color or self.template)
-        self.is_master = topic.rfind("/master") == len(topic)-7 # 7 = len("/master")
+        self.is_master = topic.rfind("/master") == len(topic)-7 # 7 = len("/master").
 
     def _pad_color(self, color):
         """ Merge hex color values or payloads into the template.
@@ -403,7 +437,7 @@ class Dmx:
             to get a fitting payload for this kind of light. """
 
         if len(color) > len(self.template):
-            # Silently truncate bytes exceeding template length
+            # Silently truncate bytes exceeding template length.
             return color[:len(self.template)]
 
         # Expand 3 char codes and codes of half the required length.
@@ -412,10 +446,10 @@ class Dmx:
         if len(color) != 6 and len(color) == 3 or len(color) == (len(self.template) / 2):
             color = "".join(char*2 for char in color)
 
-        if len(color) == len(self.template): # Nothing more to do
+        if len(color) == len(self.template): # Nothing more to do.
             return color
 
-        # Add padding
+        # Add padding.
         color = color + self.template[len(color):]
         return color
 
@@ -433,7 +467,7 @@ class Dmx:
 class Dmx4(Dmx):
     """ Abstraction of the 4 channel LED cans in the club. """
 
-    # 3 bytes for color plus 1 byte for brightness
+    # 3 bytes for color plus 1 byte for brightness.
     template = "000000ff"
 
 
@@ -441,7 +475,7 @@ class Dmx7(Dmx):
     """ Abstraction of the 7 channel LED cans in the club. """
 
     # 3 bytes for color, another 3 bytes for special functions and 1 byte
-    # for brightness
+    # for brightness.
     template = "000000000000ff"
 
 
@@ -451,7 +485,7 @@ class C4Room:
     def __init__(self):
         self.c4 = C4Interface()
         # get_switch_state() will store its result and a timestamp to reduce
-        # requests to the broker
+        # requests to the broker.
         self._switch_state = ("", 0.0)
 
     def _interactive_light_switch(self):
@@ -467,7 +501,7 @@ class C4Room:
                 print((level * '|') + ",- " + self.switches[level][0])
 
             switch_state = self.get_switch_state()
-            print(switch_state) # Present current state
+            print(switch_state) # Present current state.
 
         try:
             userinput = sys.stdin.readline().rstrip('\n')
@@ -500,7 +534,7 @@ class C4Room:
         for sw in self.switches:
             for r in responce:
                 if r.topic == sw[1]:
-                    state += str(int.from_bytes(r.payload, byteorder="little"))
+                    state += str(int.from_bytes(r.payload, sys.byteorder))
 
         if C4Interface.debug:
             print("[DEBUG] Warning: handing over fake data to allow for further execution!",
@@ -514,20 +548,20 @@ class C4Room:
         """ Switch lamps in a room on or off. """
 
         if not userinput:
-            # Derive user input from stdin
+            # Derive user input from stdin.
             userinput = self._interactive_light_switch()
             if userinput == "": return
 
         # Let's support some geeky binary operations!
-        mode = 'n' # n = normal, a = AND, o = OR
+        mode = 'n' # n = normal, a = AND, o = OR.
         if not userinput.isdecimal():
             if userinput[0] == '&' and userinput[1:].strip().isdecimal():
-                # AND operator, applied later after doing some more validation
+                # AND operator, applied later after doing some more validation.
                 userinput = userinput[1:].strip()
                 mode = 'a'
 
             elif userinput[0] == '|' and userinput[1:].strip().isdecimal():
-                # OR operator, applied later after doing some more validation
+                # OR operator, applied later after doing some more validation.
                 userinput = userinput[1:].strip()
                 mode = 'o'
 
@@ -540,7 +574,7 @@ class C4Room:
                 else:
                     shift_by = 1
 
-                # Retrieve the current state of switches
+                # Retrieve the current state of switches.
                 switch_state = self.get_switch_state()
                 if userinput[:2] == ">>":
                     # Right shift. '[2:]' removes the leading 'b0...'.
@@ -548,9 +582,9 @@ class C4Room:
                 else:
                     # Left shift. '[2:]' removes the leading 'b0...'.
                     new_state = bin(int(switch_state, base=2) << shift_by)[2:]
-                    # Cut any exceeding leftmost bits
+                    # Cut any exceeding leftmost bits.
                     new_state = new_state[-len(self.switches):]
-                # Pad with leading zeroes
+                # Pad with leading zeroes.
                 userinput = new_state.rjust(len(self.switches), '0')
 
             else:
@@ -561,11 +595,11 @@ class C4Room:
 
         if len(userinput) != len(self.switches):
             # First try to convert from decimal if userinput's length doesn't
-            # match
+            # match.
             if len(bin(int(userinput))) <= len(self.switches)+2:
-                # ^ +2 because bin() returns strings like 'b0...'
-                binary = bin(int(userinput))[2:] # Strip leading 'b0'
-                # Pad with leading zeroes
+                # ^ +2 because bin() returns strings like 'b0...'.
+                binary = bin(int(userinput))[2:] # Strip leading 'b0'.
+                # Pad with leading zeroes.
                 userinput = binary.rjust(len(self.switches), '0')
             else:
                 print("Error: wrong number of digits (expected {}, got {})!".format(
@@ -573,24 +607,24 @@ class C4Room:
                 return False
 
         # Now that everything special is expanded it's time to check if
-        # userinput really consists of 1s and 0s only
+        # userinput really consists of 1s and 0s only.
         for digit in userinput:
             if digit not in "01":
                 print("Error: invalid digit: " + digit, file=sys.stderr)
                 return False
 
-        if mode == 'a': # AND operator
+        if mode == 'a': # AND operator.
             switch_state = self.get_switch_state()
             userinput = "".join(map(lambda x, y: str(int(x) & int(y)),
                                     userinput, switch_state))
-        elif mode == 'o': # OR operator
+        elif mode == 'o': # OR operator.
             switch_state = self.get_switch_state()
             userinput = "".join(map(lambda x, y: str(int(x) | int(y)),
                                     userinput, switch_state))
 
         command=[]
         for i in range(len(self.switches)):
-            # Skip unchanged switches if we happen to know their state
+            # Skip unchanged switches if we happen to know their state.
             if "switch_state" in dir():
                 if switch_state[i] == userinput[i]: continue
 
@@ -609,12 +643,12 @@ class C4Room:
             if colorscheme.get_color_for(light.topic):
 
                 # Update internal state of this Dmx object, so we can query
-                # <object>.payload later
+                # <object>.payload later.
                 light.set_color(colorscheme.get_color_for(light.topic))
 
                 if magic:
-                    # Send color to ghost instead of the "real" light
-                    # Generate the ghost topic for topic
+                    # Send color to ghost instead of the "real" light.
+                    # Generate the ghost topic for topic.
                     ghost = "ghosts" + light.topic[light.topic.find('/'):]
 
                     command.append({
@@ -631,7 +665,7 @@ class C4Room:
         # Nothing to do. May happen if a preset defines no color for a room.
         if command == []: return
 
-        if magic: # Do not retain "magic" messages
+        if magic: # Do not retain "magic" messages.
           return self.c4.push(command, retain=False)
         else:
           return self.c4.push(command)
@@ -727,23 +761,23 @@ class ColorScheme:
         self.mapping = {}
         self.single_color = False
         self.return_random_color = False
-        self.available = None # List of available presets
+        self.available = None # List of available presets.
         if init:
-            # Load or generate preset
+            # Load or generate preset.
             if init[0] == '#':
                 return self.from_color(init)
             elif self._expand_preset(init) == "off":
-                # Virtual preset: set masters to #000000
+                # Virtual preset: set masters to #000000.
                 return self.from_color("000000")
             elif self._expand_preset(init) == "random":
-                # Virtual preset: return random color on every query
+                # Virtual preset: return random color on every query.
                 return self.from_random()
             else:
-                # Load preset file
+                # Load preset file.
                 return self.from_file(init)
 
     def __bool__(self):
-        # Return true if get_color_for has a chance to present anything useful
+        # Return true if get_color_for has a chance to present anything useful.
         if self.mapping: return True
         if self.single_color: return True
         if self.return_random_color: return True
@@ -753,10 +787,10 @@ class ColorScheme:
         """ Returns path of the config dir. """
 
         import os
-        # The name of our config directory
+        # The name of our config directory.
         XDG_NAME = "c4ctrl"
 
-        # Get XDG_CONFIG_DIR from environment or set default
+        # Get XDG_CONFIG_DIR from environment or set default.
         if "XDG_CONFIG_DIR" in os.environ:
             XDG_CONFIG_DIR = os.environ["XDG_CONFIG_DIR"]
         else:
@@ -787,19 +821,19 @@ class ColorScheme:
             else:
                 self.available = os.listdir(config_dir)
                 self.available.extend(self._virtual_presets)
-        # Search for an exact match first
+        # Search for an exact match first.
         for a in self.available:
             if a == preset: return a
-        # Return anything which begins with the name given
+        # Return anything which begins with the name given.
         for a in self.available:
             if a.find(preset) == 0: return a
-        # Fallback
+        # Fallback.
         return preset
 
     def _topic_is_master(self, topic):
         """ Does the given topic look like a master topic? """
 
-        return topic.lower().rfind("/master") == len(topic)-7 # 7 = len("/master")
+        return topic.lower().rfind("/master") == len(topic)-7 # 7 = len("/master").
 
     def _random_color(self):
         """ Returns a 3*4 bit pseudo random color in 6 char hex notation. """
@@ -829,10 +863,10 @@ class ColorScheme:
                 return self.single_color
         elif self.return_random_color:
             # We need to take care not to return colors for both "normal" and
-            # master topics
+            # master topics.
             if not self._topic_is_master(topic):
                 return self._random_color()
-        # Fallback
+        # Fallback.
         return None
 
     def from_file(self, preset):
@@ -847,9 +881,9 @@ class ColorScheme:
                 print("Error: could not load preset!")
                 return
 
-            # Expand preset name
+            # Expand preset name.
             preset = self._expand_preset(preset)
-            # Try to open the preset file
+            # Try to open the preset file.
             fn = os.path.join(config_dir, preset)
             try:
                 fd = open(fn)
@@ -857,22 +891,22 @@ class ColorScheme:
                 print("Error: could not load preset \"{}\" (file could not be accessed)!".format(preset))
                 return
 
-        # Parse the preset file
+        # Parse the preset file.
         self.mapping = {}
         self.name = preset
         for line in fd.readlines():
-            # Skip every line which does not begin with an alphabetic character
+            # Skip every line which does not begin with an alphabetic character.
             try:
                 if not line.lstrip()[0].isalpha(): continue
-            except IndexError: continue # Empty line
+            except IndexError: continue # Empty line.
 
-            # Strip spaces and split
+            # Strip spaces and split.
             k, v = line.replace(' ','').replace('\t','').split('=')
-            # Convert #fff to fff and remove trailing comments, nl and cr chars
+            # Convert #fff to fff and remove trailing comments, nl and cr chars.
             vl = v.rstrip("\n\r").split('#')
             v = vl[0] or vl[1]
 
-            # Validate hex code
+            # Validate hex code.
             for c in v.lower():
                 if c not in "0123456789abcdef":
                     print("Error: invalid color code \"{}\" in preset \"{}\"!".format(v, preset), file=sys.stderr)
@@ -925,14 +959,14 @@ is reserved. Please choose a different one.".format(name))
         else:
             import os
 
-            # Put preset in our config directory, create it if necessary
+            # Put preset in our config directory, create it if necessary.
             config_dir = self._get_config_dir(create=True)
-            # Strip any path elements
+            # Strip any path elements.
             name = os.path.split(name)[1]
             fn = os.path.join(config_dir, name)
 
             try:
-                fd = open(fn, 'xt') # x = new file (writing), t = text mode
+                fd = open(fn, 'xt') # x = new file (writing), t = text mode.
             except FileExistsError:
                 print("A preset with this name already exists, overwrite? [y/N]",
                         end=' ', flush=True)
@@ -941,7 +975,7 @@ is reserved. Please choose a different one.".format(name))
                 else:
                     return False
 
-        # Get current states
+        # Get current states.
         c4 = C4Interface()
 
         if name == '-':
@@ -966,18 +1000,18 @@ is reserved. Please choose a different one.".format(name))
                 for r in responce:
                     if r.topic == light.topic:
                         light.set_color(r.payload.hex())
-                        # Format payload more nicely
+                        # Format payload more nicely.
                         color = light.color
                         if len(color) > 6:
                             color = color[:6] + ' ' + color[6:]
                         topic = light.topic.ljust(max_topic_len)
-                        # Out comment master, as it would override everything else
+                        # Out comment master, as it would override everything else.
                         if self._topic_is_master(r.topic):
                             fd.write("#{} = {}\n".format(topic, color))
                         else:
                             fd.write("{} = {}\n".format(topic, color))
 
-        # Do not close stdout
+        # Do not close stdout.
         if name != '-':
             fd.close()
             print("Wrote preset \"{}\"".format(name))
@@ -1024,13 +1058,13 @@ class RemotePresets:
         """ Returns a valid room name expanded from the given name. """
 
         if name in self.map.keys():
-            # Return on exact match
+            # Return on exact match.
             return name
 
         for room in self.map.keys():
             if room.find(name) == 0:
                 return room
-        # Fallback
+        # Fallback.
         return name
 
     def _expand_preset_name(self, name, rooms, available):
@@ -1054,28 +1088,28 @@ class RemotePresets:
             for preset in available["global"]:
                 # Candidate?
                 if preset == name or preset.find(name) == 0:
-                    # Presets in "global" are available everywhere
+                    # Presets in "global" are available everywhere.
                     matchtable[preset] = len(rooms)
 
         for room in rooms:
             for preset in available[room]:
-                # Candidate? 
+                # Candidate?
                 if preset == name or preset.find(name) == 0:
                     if preset in matchtable.keys():
                         matchtable[preset] += 1
                     else:
                         matchtable[preset] = 1
 
-        # First check if there is an exact match in all rooms
+        # First check if there is an exact match in all rooms.
         if name in matchtable.keys() and matchtable[name] >= len(rooms):
             return name
-        # Return first preset available in all rooms
+        # Return first preset available in all rooms.
         for match in matchtable.keys():
             if matchtable[match] >= len(rooms):
                 return match
             elif match in available["global"]:
                 return match
-        # Fallback
+        # Fallback.
         return name
 
     def query_available(self, rooms=["global"]):
@@ -1083,7 +1117,7 @@ class RemotePresets:
 
         import json
 
-        # Presets in "global" are available everywhere and should always be included
+        # Presets in "global" are available everywhere and should always be included.
         if "global" not in rooms:
             rooms.insert(0, "global")
 
@@ -1097,7 +1131,7 @@ class RemotePresets:
 
         c4 = C4Interface()
         responce = c4.pull(req)
-        # Make responce iterable
+        # Make responce iterable.
         if type(responce) != list: responce = [responce]
 
         available = {}
@@ -1125,12 +1159,12 @@ class RemotePresets:
     def apply_preset(self, preset, rooms=["global"]):
         """ Apply preset to given rooms. """
 
-        # Strip spaces and expand rooms names
+        # Strip spaces and expand rooms names.
         for i in range(len(rooms)):
             rooms[i] = self._expand_room_name(rooms[i].strip())
 
         available = self.query_available(rooms.copy())
-        # Produce some fake data to prevent KeyErrors if in debug mode
+        # Produce some fake data to prevent KeyErrors if in debug mode.
         if C4Interface.debug:
             print("[DEBUG] Warning: handing over fake data to allow for further execution!",
                 file=sys.stderr)
@@ -1141,7 +1175,7 @@ class RemotePresets:
                 "fnord" : [preset],
                 "keller" : [preset]
             }
-        # Expand preset name (stripping spaces)
+        # Expand preset name (stripping spaces).
         preset = self._expand_preset_name(preset, rooms.copy(), available.copy())
 
         for room in rooms:
@@ -1183,7 +1217,7 @@ if __name__ == "__main__":
     # Kitchenlight control
     group_kl = parser.add_argument_group(title="Kitchenlight control")
     group_kl.add_argument(
-        "-k", "--kl-mode", type=str, metavar="MODE[,OPTIONS]",
+        "-k", "--kl-mode", nargs='+', type=str, metavar=("MODE", "OPTIONS"),
         help="set Kitchenlight to MODE")
     group_kl.add_argument(
         "-i", "--list-kl-modes", action="store_true",
@@ -1237,7 +1271,7 @@ if __name__ == "__main__":
         description="Available room names are \"wohnzimmer\", \"plenar\", \
         \"fnord\" and \"keller\". Preset and room names may be abbreviated.")
     group_rp.add_argument(
-        "-r", "--remote-preset", type=str, metavar="PRESET[:ROOM[,ROOM,...]]",
+        "-r", "--remote-preset", nargs='+', type=str, metavar=("PRESET", "ROOM"),
         help="activate remote PRESET for ROOM(s). Activates preset globally \
         if ROOM is omitted.")
     group_rp.add_argument(
@@ -1246,7 +1280,7 @@ if __name__ == "__main__":
         is omitted.")
     args = parser.parse_args()
 
-    # Debug, gate, status and shutdown
+    # Debug, gate, status and shutdown.
     if args.debug:
         C4Interface.debug = True
     if args.status:
@@ -1265,16 +1299,15 @@ if __name__ == "__main__":
         Kitchenlight().list_available()
     if args.kl_mode:
         kl = Kitchenlight()
-        mode = args.kl_mode.split(',')
-        if len(mode) == 1:
-            kl.set_mode(mode[0])
+        if len(args.kl_mode) == 1:
+            kl.set_mode(args.kl_mode[0])
         else:
-            kl.set_mode(mode[0], mode[1:])
+            kl.set_mode(args.kl_mode[0], args.kl_mode[1:])
 
     # Colorscheme
     if args.store_as:
         ColorScheme().store(args.store_as)
-    presets = {} # Store and reuse initialized presets
+    presets = {} # Store and reuse initialized presets.
     if args.w_color:
         if args.w_color not in presets:
             presets[args.w_color] = ColorScheme(args.w_color)
@@ -1304,12 +1337,11 @@ if __name__ == "__main__":
     if args.list_remote:
         RemotePresets().list_available(args.list_remote.lower())
     if args.remote_preset:
-        remote_opts = args.remote_preset.split(':')
-        if len(remote_opts) == 1:
-            RemotePresets().apply_preset(remote_opts[0].strip())
+        if len(args.remote_preset) == 1:
+            RemotePresets().apply_preset(args.remote_preset[0].strip())
         else:
-            RemotePresets().apply_preset(remote_opts[0].strip(),
-                    remote_opts[1].lower().split(','))
+            RemotePresets().apply_preset(args.remote_preset[0].strip(),
+                                         args.remote_preset[1:])
 
     # No or no useful command line options?
     if len(sys.argv) <= 1 or len(sys.argv) == 2 and args.debug:
