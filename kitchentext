@@ -17,10 +17,11 @@
 # You should have received a copy of the GNU General Public License along with
 # this program.  If not, see <http://www.gnu.org/licenses/>.
 
-def kitchentext(delay=200, skip_if_off=False, poweron=False, restore=False,
-                wait=False, verbose=False, debug=False):
+def kitchentext(delay=200, skip_if_off=False, poweron=False, verbose=False,
+                debug=False):
 
     import sys, signal
+    from time import sleep
     from c4ctrl import C4Interface, Kitchenlight
 
     charwidth = { # Width of characters.
@@ -45,20 +46,16 @@ def kitchentext(delay=200, skip_if_off=False, poweron=False, restore=False,
     C4Interface.debug = debug
     kl = Kitchenlight(autopower=poweron)
 
-    # Enforce wait=True if restore=True
-    wait = wait or restore
-
     # Store previous state.
-    if restore or skip_if_off:
-        c4 = C4Interface()
-        saved_state = c4.pull([kl.topic, kl.powertopic])
+    c4 = C4Interface()
+    saved_state = c4.pull([kl.topic, kl.powertopic])
 
-        if skip_if_off:
-            # Stop here if kitchenlight is turned off.
-            for state in saved_state:
-                if state.topic == kl.powertopic and state.payload == b'\x00':
-                    verbose and print("Found Kitchenlight turned off and '-i' flag given. Exiting.")
-                    return
+    if skip_if_off:
+        # Stop here if kitchenlight is turned off.
+        for state in saved_state:
+            if state.topic == kl.powertopic and state.payload == b'\x00':
+                verbose and print("Found Kitchenlight turned off and '-i' flag given. Exiting.")
+                return
 
     # We want to be able to restore the saved Kitchenlight if we receive a
     # SIGERM signal. We do this by creating and registering a custom exception
@@ -95,23 +92,21 @@ def kitchentext(delay=200, skip_if_off=False, poweron=False, restore=False,
             try: # We might well get interrupted while waiting.
                 kl.text(text, delay)
 
-                if wait:
-                    from time import sleep
-                    # How long shall we wait? Kitchenlight has 30 columns, each
-                    # char uses 2-5 columns followed by an empty one. The
-                    # traversal of one column takes 30 * <delay> ms.
-                    text_width = 0
-                    for c in text:
-                        try:
-                            text_width += (charwidth[c] + 1)
-                        except KeyError:
-                            # No width specified for this charachter. Let's use
-                            # 4 as default.
-                            text_width += 4
+                # How long shall we wait? Kitchenlight has 30 columns, each
+                # char uses 2-5 columns followed by an empty one. The
+                # traversal of one column takes 30 * <delay> ms.
+                text_width = 0
+                for c in text:
+                    try:
+                        text_width += (charwidth[c] + 1)
+                    except KeyError:
+                        # No width specified for this charachter. Let's use
+                        # 4 as default.
+                        text_width += 4
 
-                    waiting_time = ((30 * delay) + (text_width * delay)) / 1000
-                    verbose and print("Waiting for {} seconds ...".format(waiting_time))
-                    sleep(waiting_time)
+                waiting_time = ((30 * delay) + (text_width * delay)) / 1000
+                verbose and print("Waiting for {} seconds ...".format(waiting_time))
+                sleep(waiting_time)
 
             except KeyboardInterrupt:
                 verbose and print("\nInterrupted by user.", file=sys.stderr)
@@ -124,10 +119,9 @@ def kitchentext(delay=200, skip_if_off=False, poweron=False, restore=False,
 
     finally:
         # Always restore privious state if "restore" is set.
-        if restore:
-            re = []
-            for top in saved_state: re.append((top.topic, top.payload))
-            c4.push(re)
+        re = []
+        for top in saved_state: re.append((top.topic, top.payload))
+        c4.push(re)
 
 
 if __name__ == "__main__":
@@ -156,15 +150,8 @@ if __name__ == "__main__":
         "-p", "--power-on", action="store_true", default=False,
         help="turn on Kitchenlight if it is powered off")
     parser.add_argument(
-        "-r", "--restore", action="store_true", default=False,
-        help="restore the Kitchenlight to its prior state after the text has \
-              been displayed (implies --wait)")
-    parser.add_argument(
         "-v", "--verbose", action="store_true",
         help="be more verbose")
-    parser.add_argument(
-        "-w", "--wait", action="store_true", default=False,
-        help="wait until the text has been displayed")
     args = parser.parse_args()
 
     if args.fork or args.F:
@@ -188,8 +175,6 @@ if __name__ == "__main__":
     kitchentext(delay=args.delay,
                 skip_if_off=args.skip_if_off,
                 poweron=args.power_on,
-                restore=args.restore,
-                wait=args.wait,
                 verbose=args.verbose,
                 debug=args.debug)
 
