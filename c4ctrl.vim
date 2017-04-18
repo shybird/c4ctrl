@@ -128,8 +128,8 @@ function C4ctrl(prev_cursor_pos, mods, first_line, last_line, command, ...) rang
     " }}}2
   
     " ***************************************************************** "
-    " Command 'kitchentext': Send given reister or text in range to the "
-    " Kitchenlight.                                                     "
+    " Command 'kitchentext': Send given register or text in range to    "
+    " the Kitchenlight.                                                 "
     " ***************************************************************** "
     elseif stridx("kitchentext", a:command) == 0 " {{{2
 
