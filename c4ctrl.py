@@ -44,7 +44,7 @@ class C4Interface():
 
     broker = "autoc4.labor.koeln.ccc.de"
     port = 1883
-    qos = 2
+    qos = 0
     retain = True
     # Generate a (sufficiently) unique client id.
     client_id = "c4ctrl-" + "".join(
