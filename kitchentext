@@ -55,12 +55,13 @@ def kitchentext(delay=200, skip_if_off=False, poweron=False, restore=False,
 
         if skip_if_off:
             # Stop here if kitchenlight is turned off.
-            if saved_state[1].payload == b'\x00':
-                verbose and print("Found Kitchenlight turned off and '-i' flag given. Exiting.")
-                return
+            for state in saved_state:
+                if state.topic == kl.powertopic and state.payload == b'\x00':
+                    verbose and print("Found Kitchenlight turned off and '-i' flag given. Exiting.")
+                    return
 
     # We want to be able to restore the saved Kitchenlight if we receive a
-    # SIGERM signal. We do this by creating an registering a custom exception
+    # SIGERM signal. We do this by creating and registering a custom exception
     # class.
     class KitchenSignalError(Exception):
         def __init__(self, signal, frame):
