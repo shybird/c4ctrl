@@ -17,8 +17,8 @@
 # You should have received a copy of the GNU General Public License along with
 # this program.  If not, see <http://www.gnu.org/licenses/>.
 
-def kitchentext(delay=200, wait=False, restore=False, poweron=False,
-                verbose=False, debug=False):
+def kitchentext(delay=200, skip_if_off=False, poweron=False, restore=False,
+                wait=False, verbose=False, debug=False):
 
     import sys, signal
     from c4ctrl import C4Interface, Kitchenlight
@@ -49,9 +49,15 @@ def kitchentext(delay=200, wait=False, restore=False, poweron=False,
     wait = wait or restore
 
     # Store previous state.
-    if restore:
+    if restore or skip_if_off:
         c4 = C4Interface()
         saved_state = c4.pull([kl.topic, kl.powertopic])
+
+        if skip_if_off:
+            # Stop here if kitchenlight is turned off.
+            if saved_state[1].payload == b'\x00':
+                verbose and print("Found Kitchenlight turned off and '-i' flag given. Exiting.")
+                return
 
     # We want to be able to restore the saved Kitchenlight if we receive a
     # SIGERM signal. We do this by creating an registering a custom exception
@@ -137,24 +143,27 @@ if __name__ == "__main__":
         "-d", "--delay", type=int, default=200,
         help="delay in ms (speed of the text, default is 200)")
     parser.add_argument(
-        "-w", "--wait", action="store_true", default=False,
-        help="wait until the text has been displayed")
-    parser.add_argument(
-        "-r", "--restore", action="store_true", default=False,
-        help="restore the Kitchenlight to its prior state after the text has \
-              been displayed (implies --wait)")
-    parser.add_argument(
-        "-p", "--power-on", action="store_true", default=False,
-        help="turn on Kitchenlight if it is powered off")
-    parser.add_argument(
         "-f", "--fork", action="store_true",
         help="fork to background")
     parser.add_argument(
         "-F", action="store_true",
         help="like '-f', but print PID of forked process to stdout")
     parser.add_argument(
+        "-i", "--skip-if-off", action="store_true", default=False,
+        help="do nothing if the kitchenlight is turned off")
+    parser.add_argument(
+        "-p", "--power-on", action="store_true", default=False,
+        help="turn on Kitchenlight if it is powered off")
+    parser.add_argument(
+        "-r", "--restore", action="store_true", default=False,
+        help="restore the Kitchenlight to its prior state after the text has \
+              been displayed (implies --wait)")
+    parser.add_argument(
         "-v", "--verbose", action="store_true",
         help="be more verbose")
+    parser.add_argument(
+        "-w", "--wait", action="store_true", default=False,
+        help="wait until the text has been displayed")
     args = parser.parse_args()
 
     if args.fork or args.F:
@@ -176,9 +185,10 @@ if __name__ == "__main__":
             sys.exit()
 
     kitchentext(delay=args.delay,
-                wait=args.wait,
-                restore=args.restore,
+                skip_if_off=args.skip_if_off,
                 poweron=args.power_on,
+                restore=args.restore,
+                wait=args.wait,
                 verbose=args.verbose,
                 debug=args.debug)
 
