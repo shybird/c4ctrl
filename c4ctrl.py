@@ -553,9 +553,12 @@ class C4Room:
             if userinput == "": return
 
         # Let's support some geeky binary operations!
-        mode = 'n' # n = normal, a = AND, o = OR.
+        mode = 'n' # n = normal, a = AND, o = OR, x = XOR.
         if not userinput.isdecimal():
-            if userinput[0] == '&' and userinput[1:].strip().isdecimal():
+            if userinput == '-':
+                print(self.get_switch_state())
+                return
+            elif userinput[0] == '&' and userinput[1:].strip().isdecimal():
                 # AND operator, applied later after doing some more validation.
                 userinput = userinput[1:].strip()
                 mode = 'a'
@@ -564,6 +567,11 @@ class C4Room:
                 # OR operator, applied later after doing some more validation.
                 userinput = userinput[1:].strip()
                 mode = 'o'
+
+            elif userinput[0] == '^' and userinput[1:].strip().isdecimal():
+                # XOR operator, applied later after doing some more validation.
+                userinput = userinput[1:].strip()
+                mode = 'x'
 
             elif (userinput[:2] == ">>" or userinput[:2] == "<<") \
                     and (userinput[2:].strip() == "" or userinput[2:].strip().isdecimal()):
@@ -620,6 +628,10 @@ class C4Room:
         elif mode == 'o': # OR operator.
             switch_state = self.get_switch_state()
             userinput = "".join(map(lambda x, y: str(int(x) | int(y)),
+                                    userinput, switch_state))
+        elif mode == 'x': # XOR operator.
+            switch_state = self.get_switch_state()
+            userinput = "".join(map(lambda x, y: str(int(x) ^ int(y)),
                                     userinput, switch_state))
 
         command=[]
@@ -1226,7 +1238,7 @@ if __name__ == "__main__":
     # Ambient control
     group_cl = parser.add_argument_group(title="ambient color control",
         description="PRESET may be either a preset name (which may be \
-        abbreviated), '#' followed by a color value in hex notation (eg. \
+        abbreviated), '#' followed by a color value in hex notation (e.g. \
         \"#ff0066\") or '-' to read from stdin.")
     group_cl.add_argument(
         "-w", "--wohnzimmer", type=str, dest="w_color", metavar="PRESET",
@@ -1250,9 +1262,11 @@ if __name__ == "__main__":
     # Switch control
     group_sw = parser.add_argument_group(title="light switch control",
         description="BINARY_CODE is a string of 0s or 1s for every light in a \
-        room. May be given as decimal. May be prepended by '&' or '|' as AND \
-        or OR operators. Will show usage information and ask for input if \
-        omitted.")
+        room. May be given as decimal. May be prepended by '&', '|' or '^' as \
+        AND, OR and XOR operators. Current switch states will be printed to \
+        stdout if BINARY_CODE is '-'. Will show usage information and ask for \
+        input if BINARY_CODE is omitted. Will read from stdin if BINARY_CODE \
+        is omitted and stdin is not connected to a TTY.")
     group_sw.add_argument(
         "-W", nargs='?', dest="w_switch", const="", metavar="BINARY_CODE",
         help="switch lights in Wohnzimmer on/off")
