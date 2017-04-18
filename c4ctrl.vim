@@ -139,7 +139,7 @@ function C4ctrl(prev_cursor_pos, mods, first_line, last_line, command, ...) rang
         return
       endif
 
-      let command_line = 'kitchentext -f -d 150 -r -p'
+      let command_line = 'kitchentext -f -d 150 -p'
       if exists('a:1')
         " Use text from given register.
         let text = getreg(a:1, 0, 1)
