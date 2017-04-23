@@ -864,7 +864,7 @@ class ColorScheme: # {{{1
                 self.available.extend(self._virtual_presets)
 
         # Search for an exact match first.
-        if a in self.available: return a
+        if preset in self.available: return preset
 
         # Return anything which begins with the name given.
         for a in self.available:
