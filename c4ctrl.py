@@ -39,7 +39,7 @@ import sys
 from random import choice # For client_id generation.
 
 
-class C4Interface():
+class C4Interface: # {{{1
     """ Interaction with AutoC4, the C4 home automation system. """
 
     broker = "autoc4.labor.koeln.ccc.de"
@@ -198,9 +198,9 @@ class C4Interface():
         else:
             payload = b'\x00'
         self.push(payload, topic="club/shutdown", retain=False)
+# }}}1
 
-
-class Kitchenlight:
+class Kitchenlight: # {{{1
     """ Interface to the Kitchenlight and its functions. """
 
     _END = "little" # Kitchenlight endianess.
@@ -417,9 +417,9 @@ class Kitchenlight:
         # Screen 11
         d = int(11).to_bytes(4, self._END)
         self._switch(d)
+# }}}1
 
-
-class Dmx:
+class Dmx: # {{{1
     """ Abstraction of the 3 channel LED cans in the club. """
 
     # 3 bytes for color, one each for red, green and blue.
@@ -462,24 +462,24 @@ class Dmx:
 
         self.color = color
         self.payload = bytearray.fromhex(color)
+# }}}1
 
-
-class Dmx4(Dmx):
+class Dmx4(Dmx): # {{{1
     """ Abstraction of the 4 channel LED cans in the club. """
 
     # 3 bytes for color plus 1 byte for brightness.
     template = "000000ff"
+# }}}1
 
-
-class Dmx7(Dmx):
+class Dmx7(Dmx): # {{{1
     """ Abstraction of the 7 channel LED cans in the club. """
 
     # 3 bytes for color, another 3 bytes for special functions and 1 byte
     # for brightness.
     template = "000000000000ff"
+# }}}1
 
-
-class C4Room:
+class C4Room: # {{{1
     """ Methods of rooms in the club. """
 
     def __init__(self):
@@ -681,9 +681,9 @@ class C4Room:
           return self.c4.push(command, retain=False)
         else:
           return self.c4.push(command)
+# }}}1
 
-
-class Wohnzimmer(C4Room):
+class Wohnzimmer(C4Room): # {{{1
     """ Description of the Wohnzimmer. """
 
     name = "Wohnzimmer"
@@ -706,9 +706,9 @@ class Wohnzimmer(C4Room):
             Dmx7("dmx/wohnzimmer/baellebad"),
             Dmx("led/kitchen/sink")
         )
+# }}}1
 
-
-class Plenarsaal(C4Room):
+class Plenarsaal(C4Room): # {{{1
     """ Description of the Plenarsaal. """
 
     name = "Plenarsaal"
@@ -729,9 +729,9 @@ class Plenarsaal(C4Room):
             Dmx7("dmx/plenar/hinten3"),
             Dmx7("dmx/plenar/hinten4")
         )
+# }}}1
 
-
-class Fnordcenter(C4Room):
+class Fnordcenter(C4Room): # {{{1
     """ Description of the Fnordcenter. """
 
     name = "Fnordcenter"
@@ -747,9 +747,9 @@ class Fnordcenter(C4Room):
             Dmx4("dmx/fnord/fairyfenster"),
             Dmx4("dmx/fnord/schrankrechts")
         )
+# }}}1
 
-
-class Keller(C4Room):
+class Keller(C4Room): # {{{1
     """ Description of the Keller. """
 
     name = "Keller"
@@ -760,9 +760,9 @@ class Keller(C4Room):
         )
     master = None
     lights = ()
+# }}}1
 
-
-class ColorScheme:
+class ColorScheme: # {{{1
     """ Abstraction of a colorscheme. """
 
     # Names of virtual presets. These are always listed as available and the
@@ -1027,9 +1027,9 @@ is reserved. Please choose a different one.".format(name))
         if name != '-':
             fd.close()
             print("Wrote preset \"{}\"".format(name))
+# }}}1
 
-
-class RemotePresets:
+class RemotePresets: # {{{1
     """ Remote preset control. """
 
     def __init__(self):
@@ -1202,9 +1202,9 @@ class RemotePresets:
 
         c4 = C4Interface()
         return c4.push(cmd)
+# }}}1
 
-
-if __name__ == "__main__":
+if __name__ == "__main__": # {{{1
     import argparse
 
     parser = argparse.ArgumentParser(
@@ -1360,4 +1360,5 @@ if __name__ == "__main__":
     # No or no useful command line options?
     if len(sys.argv) <= 1 or len(sys.argv) == 2 and args.debug:
         parser.print_help()
+# }}}1
 
