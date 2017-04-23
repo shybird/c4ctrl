@@ -203,6 +203,19 @@ class C4Interface: # {{{1
 class Kitchenlight: # {{{1
     """ Interface to the Kitchenlight and its functions. """
 
+    # List of available modes.
+    modes = [
+        "off",
+        "checker",
+        "matrix",
+        "mood",
+        "oc",
+        "pacman",
+        "sine",
+        "text",
+        "flood",
+        "clock"
+    ]
     _END = "little" # Kitchenlight endianess.
 
     def __init__(self, topic="kitchenlight/change_screen",
@@ -234,6 +247,18 @@ class Kitchenlight: # {{{1
             c4 = C4Interface()
             c4.push(data, topic=self.topic)
 
+    def _expand_mode_name(self, name):
+        # Return exact match.
+        if name in self.modes:
+            return name
+
+        for mode in self.modes:
+            if mode.find(name) == 0:
+                return mode
+
+        # Fallback.
+        return name
+
     def list_available(self):
         """ Print a list of available Kitchenlight modes. """
 
@@ -253,7 +278,8 @@ class Kitchenlight: # {{{1
     def set_mode(self, mode, opts=[]):
         """ Switch to given mode. """
 
-        mode = mode.lower()
+        mode = self._expand_mode_name(mode.lower())
+
         if mode == "off":
             return self.empty()
         if mode == "checker":
@@ -274,6 +300,7 @@ class Kitchenlight: # {{{1
             return self.flood()
         if mode == "clock":
             return self.clock()
+
         print("Error: unknown Kitchenlight mode {}!".format(mode))
         return False
 
@@ -825,7 +852,9 @@ class ColorScheme: # {{{1
 
     def _expand_preset(self, preset):
         """ Tries to expand given string to a valid preset name. """
+
         import os
+
         if not self.available:
             config_dir = self._get_config_dir(ignore_missing=True)
             if not config_dir:
@@ -833,12 +862,14 @@ class ColorScheme: # {{{1
             else:
                 self.available = os.listdir(config_dir)
                 self.available.extend(self._virtual_presets)
+
         # Search for an exact match first.
-        for a in self.available:
-            if a == preset: return a
+        if a in self.available: return a
+
         # Return anything which begins with the name given.
         for a in self.available:
             if a.find(preset) == 0: return a
+
         # Fallback.
         return preset
 
@@ -851,6 +882,7 @@ class ColorScheme: # {{{1
         """ Returns a 3*4 bit pseudo random color in 6 char hex notation. """
 
         from random import randint, sample
+
         channels = [15]
         channels.append(randint(0,15))
         channels.append(randint(0,15) - channels[1])
@@ -1230,7 +1262,7 @@ if __name__ == "__main__": # {{{1
     group_kl = parser.add_argument_group(title="Kitchenlight control")
     group_kl.add_argument(
         "-k", "--kl-mode", nargs='+', type=str, metavar=("MODE", "OPTIONS"),
-        help="set Kitchenlight to MODE")
+        help="set Kitchenlight to MODE (MODE may be abbreviated)")
     group_kl.add_argument(
         "-i", "--list-kl-modes", action="store_true",
         help="list available Kitchenlight modes and their options")
