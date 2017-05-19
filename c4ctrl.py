@@ -782,7 +782,7 @@ class Keller(C4Room): # {{{1
 
     name = "Keller"
     switches = (
-            ("Mitte", "licht/keller/aussen"),
+            ("Mitte", "licht/keller/mitte"),
             ("Lötplatz", "licht/keller/loet"),
             ("Vorne", "licht/keller/vorne")
         )
