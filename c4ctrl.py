@@ -36,7 +36,7 @@ Dependencies:
 """
 
 import sys
-from random import choice # For client_id generation.
+from random import choice # for client_id generation.
 
 
 class C4Interface: # {{{1
@@ -262,18 +262,19 @@ class Kitchenlight: # {{{1
     def list_available(self):
         """ Print a list of available Kitchenlight modes. """
 
-        print("Available Kitchenlight modes (options are optional):")
-        print("""
-  off                                   turn off Kitchenlight
-  checker [DELAY] [COLOR_1] [COLOR_2]   Checker
-  matrix [LINES]                        Matrix
-  mood [1|2] (1=Colorwheel, 2=Random)   Moodlight
-  oc [DELAY]                            Open Chaos
-  pacman                                Pacman
-  sine                                  Sine
-  text [TEXT] [DELAY]                   Text
-  flood                                 Flood
-  clock                                 Clock""")
+        print(
+            "Available Kitchenlight modes (options are optional):\n\n"
+            "  off                                   turn off Kitchenlight\n"
+            "  checker [DELAY] [COLOR_1] [COLOR_2]   Checker\n"
+            "  matrix [LINES]                        Matrix\n"
+            "  mood [1|2] (1=Colorwheel, 2=Random)   Moodlight\n"
+            "  oc [DELAY]                            Open Chaos\n"
+            "  pacman                                Pacman\n"
+            "  sine                                  Sine\n"
+            "  text [TEXT] [DELAY]                   Text\n"
+            "  flood                                 Flood\n"
+            "  clock                                 Clock\n"
+        )
 
     def set_mode(self, mode, opts=[]):
         """ Switch to given mode. """
@@ -447,7 +448,7 @@ class Kitchenlight: # {{{1
 # }}}1
 
 class Dmx: # {{{1
-    """ Abstraction of the 3 channel LED cans in the club. """
+    """ Abstraction of the 3 channel LED cans. """
 
     # 3 bytes for color, one each for red, green and blue.
     template = "000000"
@@ -455,7 +456,7 @@ class Dmx: # {{{1
     def __init__(self, topic, color=None):
         self.topic = topic
         self.set_color(color or self.template)
-        self.is_master = topic.rfind("/master") == len(topic)-7 # 7 = len("/master").
+        self.is_master = topic.rfind("/master") == len(topic)-7 # 7 = len("/master")
 
     def _pad_color(self, color):
         """ Merge hex color values or payloads into the template.
@@ -492,14 +493,14 @@ class Dmx: # {{{1
 # }}}1
 
 class Dmx4(Dmx): # {{{1
-    """ Abstraction of the 4 channel LED cans in the club. """
+    """ Abstraction of the 4 channel LED cans. """
 
     # 3 bytes for color plus 1 byte for brightness.
     template = "000000ff"
 # }}}1
 
 class Dmx7(Dmx): # {{{1
-    """ Abstraction of the 7 channel LED cans in the club. """
+    """ Abstraction of the 7 channel LED cans. """
 
     # 3 bytes for color, another 3 bytes for special functions and 1 byte
     # for brightness.
@@ -585,6 +586,7 @@ class C4Room: # {{{1
             if userinput == '-':
                 print(self.get_switch_state())
                 return
+
             elif userinput[0] == '&' and userinput[1:].strip().isdecimal():
                 # AND operator, applied later after doing some more validation.
                 userinput = userinput[1:].strip()
@@ -633,9 +635,8 @@ class C4Room: # {{{1
             # match.
             if len(bin(int(userinput))) <= len(self.switches)+2:
                 # ^ +2 because bin() returns strings like 'b0...'.
-                binary = bin(int(userinput))[2:] # Strip leading 'b0'.
-                # Pad with leading zeroes.
-                userinput = binary.rjust(len(self.switches), '0')
+                # Convert to binary and pad with leading zeroes.
+                userinput = "{{:0{}b}}".format(len(self.switches)).format(int(userinput))
             else:
                 print("Error: wrong number of digits (expected {}, got {})!".format(
                         len(self.switches), len(userinput)), file=sys.stderr)
@@ -781,8 +782,8 @@ class Keller(C4Room): # {{{1
 
     name = "Keller"
     switches = (
-            ("Außen", "licht/keller/aussen"),
-            ("Innen", "licht/keller/innen"),
+            ("Mitte", "licht/keller/aussen"),
+            ("Lötplatz", "licht/keller/loet"),
             ("Vorne", "licht/keller/vorne")
         )
     master = None
@@ -806,7 +807,7 @@ class ColorScheme: # {{{1
             if init[0] == '#':
                 return self.from_color(init)
             elif self._expand_preset(init) == "off":
-                # Virtual preset: set masters to #000000.
+                # Virtual preset: set all to #000000.
                 return self.from_color("000000")
             elif self._expand_preset(init) == "random":
                 # Virtual preset: return random color on every query.
@@ -876,7 +877,7 @@ class ColorScheme: # {{{1
     def _topic_is_master(self, topic):
         """ Does the given topic look like a master topic? """
 
-        return topic.lower().rfind("/master") == len(topic)-7 # 7 = len("/master").
+        return topic.lower().rfind("/master") == len(topic)-7 # 7 = len("/master")
 
     def _random_color(self):
         """ Returns a 3*4 bit pseudo random color in 6 char hex notation. """
@@ -1055,7 +1056,7 @@ is reserved. Please choose a different one.".format(name))
                         else:
                             fd.write("{} = {}\n".format(topic, color))
 
-        # Do not close stdout.
+        # Close opened files, but not stdout.
         if name != '-':
             fd.close()
             print("Wrote preset \"{}\"".format(name))
@@ -1357,15 +1358,15 @@ if __name__ == "__main__": # {{{1
     if args.w_color:
         if args.w_color not in presets:
             presets[args.w_color] = ColorScheme(args.w_color)
-        if presets[args.w_color]: Wohnzimmer().set_colorscheme(presets[args.w_color], args.magic)
+        Wohnzimmer().set_colorscheme(presets[args.w_color], args.magic)
     if args.p_color:
         if args.p_color not in presets:
             presets[args.p_color] = ColorScheme(args.p_color)
-        if presets[args.p_color]: Plenarsaal().set_colorscheme(presets[args.p_color], args.magic)
+        Plenarsaal().set_colorscheme(presets[args.p_color], args.magic)
     if args.f_color:
         if args.f_color not in presets:
             presets[args.f_color] = ColorScheme(args.f_color)
-        if presets[args.f_color]: Fnordcenter().set_colorscheme(presets[args.f_color], args.magic)
+        Fnordcenter().set_colorscheme(presets[args.f_color], args.magic)
     if args.list_presets:
         ColorScheme().list_available()
 
