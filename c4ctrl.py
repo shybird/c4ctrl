@@ -580,27 +580,26 @@ class C4Room: # {{{1
             userinput = self._interactive_light_switch()
             if userinput == "": return
 
-        # Let's support some geeky binary operations!
-        mode = 'n' # n = normal, a = AND, o = OR, x = XOR.
-        if not userinput.isdecimal():
-            if userinput == '-':
-                print(self.get_switch_state())
-                return
+        if userinput == '-':
+            print(self.get_switch_state())
+            return
 
-            elif userinput[0] == '&' and userinput[1:].strip().isdecimal():
-                # AND operator, applied later after doing some more validation.
-                userinput = userinput[1:].strip()
-                mode = 'a'
+        # Let's support some binary operations!
+        ops = "" # Store operators.
+        while not userinput.isdecimal():
+            if userinput == "":
+                # Huh, no operand given. oO
+                if ops[-1:] == '~':
+                    # The NOT operator may work on the current switch state.
+                    userinput = self.get_switch_state()
+                else:
+                    print("Error: missing operand after '{}'!".format(ops[-1]),
+                          file=sys.stderr)
+                    return
 
-            elif userinput[0] == '|' and userinput[1:].strip().isdecimal():
-                # OR operator, applied later after doing some more validation.
+            elif userinput[0] in "&|^~":
+                ops += userinput[0]
                 userinput = userinput[1:].strip()
-                mode = 'o'
-
-            elif userinput[0] == '^' and userinput[1:].strip().isdecimal():
-                # XOR operator, applied later after doing some more validation.
-                userinput = userinput[1:].strip()
-                mode = 'x'
 
             elif (userinput[:2] == ">>" or userinput[:2] == "<<") \
                     and (userinput[2:].strip() == "" or userinput[2:].strip().isdecimal()):
@@ -649,18 +648,24 @@ class C4Room: # {{{1
                 print("Error: invalid digit: " + digit, file=sys.stderr)
                 return False
 
-        if mode == 'a': # AND operator.
-            switch_state = self.get_switch_state()
-            userinput = "".join(map(lambda x, y: str(int(x) & int(y)),
-                                    userinput, switch_state))
-        elif mode == 'o': # OR operator.
-            switch_state = self.get_switch_state()
-            userinput = "".join(map(lambda x, y: str(int(x) | int(y)),
-                                    userinput, switch_state))
-        elif mode == 'x': # XOR operator.
-            switch_state = self.get_switch_state()
-            userinput = "".join(map(lambda x, y: str(int(x) ^ int(y)),
-                                    userinput, switch_state))
+        while ops:
+            # Apply modifiers.
+            if ops[-1] == '~': # NOT operator.
+                userinput = "".join(map(lambda i: i == '0' and '1' or '0',
+                                        userinput))
+            elif ops[-1] == '&': # AND operator.
+                switch_state = self.get_switch_state()
+                userinput = "".join(map(lambda x, y: str(int(x) & int(y)),
+                                        userinput, switch_state))
+            elif ops[-1] == '|': # OR operator.
+                switch_state = self.get_switch_state()
+                userinput = "".join(map(lambda x, y: str(int(x) | int(y)),
+                                        userinput, switch_state))
+            elif ops[-1] == '^': # XOR operator.
+                switch_state = self.get_switch_state()
+                userinput = "".join(map(lambda x, y: str(int(x) ^ int(y)),
+                                        userinput, switch_state))
+            ops = ops[:-1]
 
         command=[]
         for i in range(len(self.switches)):
@@ -1295,11 +1300,11 @@ if __name__ == "__main__": # {{{1
     # Switch control
     group_sw = parser.add_argument_group(title="light switch control",
         description="BINARY_CODE is a string of 0s or 1s for every light in a \
-        room. May be given as decimal. May be prepended by '&', '|' or '^' as \
-        AND, OR and XOR operators. Current switch states will be printed to \
-        stdout if BINARY_CODE is '-'. Will show usage information and ask for \
-        input if BINARY_CODE is omitted. Will read from stdin if BINARY_CODE \
-        is omitted and stdin is not connected to a TTY.")
+        room. May be given as decimal. May be prepended by '~', '&', '|' or \
+        '^' as NOT, AND, OR and XOR operators. Current switch states will be \
+        printed to stdout if BINARY_CODE is '-'. Will show usage information \
+        and ask for input if BINARY_CODE is omitted. Will read from stdin if \
+        BINARY_CODE \ is omitted and stdin is not connected to a TTY.")
     group_sw.add_argument(
         "-W", nargs='?', dest="w_switch", const="", metavar="BINARY_CODE",
         help="switch lights in Wohnzimmer on/off")
