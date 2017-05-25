@@ -542,8 +542,8 @@ class C4Room: # {{{1
     def get_switch_state(self, max_age=5):
         """ Returns current state of switches as a string of 1s and 0s.
 
-            max_age specifies how old (in seconds) a cached responce from a
-            previously done request may be before it is considered outdated. """
+            max_age specifies how old (in seconds) a cached responce must be
+            before it is considered outdated. """
 
         from time import time
 
@@ -572,17 +572,8 @@ class C4Room: # {{{1
         self._switch_state = (state, time())
         return state
 
-    def light_switch(self, userinput=""):
-        """ Switch lamps in a room on or off. """
-
-        if not userinput:
-            # Derive user input from stdin.
-            userinput = self._interactive_light_switch()
-            if userinput == "": return
-
-        if userinput == '-':
-            print(self.get_switch_state())
-            return
+    def _parse_switch_input(self, userinput):
+        """ Parse user input to the switch command. """
 
         # Let's support some binary operations!
         ops = "" # Store operators.
@@ -666,6 +657,23 @@ class C4Room: # {{{1
                 userinput = "".join(map(lambda x, y: str(int(x) ^ int(y)),
                                         userinput, switch_state))
             ops = ops[:-1]
+
+        return userinput
+
+    def light_switch(self, userinput=""):
+        """ Switch lamps in a room on or off. """
+
+        if not userinput:
+            # Derive user input from stdin.
+            userinput = self._interactive_light_switch()
+            if userinput == "": return
+
+        if userinput == '-':
+            print(self.get_switch_state())
+            return
+
+        userinput = self._parse_switch_input(userinput)
+        if not userinput: sys.exit(1)
 
         command=[]
         for i in range(len(self.switches)):
