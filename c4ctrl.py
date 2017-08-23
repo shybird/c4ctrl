@@ -202,6 +202,7 @@ class C4Interface: # {{{1
 
 class Kitchenlight: # {{{1
     """ Interface to the Kitchenlight and its functions. """
+    # TODO: use struct(?)
 
     # List of available modes.
     modes = [
@@ -274,6 +275,8 @@ class Kitchenlight: # {{{1
             "  text [TEXT] [DELAY]                   Text\n"
             "  flood                                 Flood\n"
             "  clock                                 Clock\n"
+            "  life [SPEED] [LIFETIME] [0|1] (1=Rainbow)\n"
+            "                                        Game of Life\n"
         )
 
     def set_mode(self, mode, opts=[]):
@@ -301,6 +304,8 @@ class Kitchenlight: # {{{1
             return self.flood()
         if mode == "clock":
             return self.clock()
+        if mode == "life":
+            return self.life(*opts)
 
         print("Error: unknown Kitchenlight mode {}!".format(mode))
         return False
@@ -346,8 +351,7 @@ class Kitchenlight: # {{{1
         if int(lines) > 31: lines = 31 # Maximal line count.
         d = bytearray(8)
         v = memoryview(d)
-        # Screen 2
-        v[0:4] = int(2).to_bytes(4, self._END)
+        v[0:4] = int(2).to_bytes(4, self._END) # Screen 2
         v[4:8] = int(lines).to_bytes(4, self._END)
         self._switch(d)
 
@@ -393,26 +397,23 @@ class Kitchenlight: # {{{1
 
         d = bytearray(8)
         v = memoryview(d)
-        # Screen 4
-        v[0:4] = int(4).to_bytes(4, self._END)
+        v[0:4] = int(4).to_bytes(4, self._END) # Screen 4
         v[4:8] = int(delay).to_bytes(4, self._END)
         self._switch(d)
 
     def pacman(self):
         """ Set to mode "pacman". """
 
-        # Screen 5
-        d = int(5).to_bytes(4, self._END)
+        d = int(5).to_bytes(4, self._END) # Screen 5
         self._switch(d)
 
     def sine(self):
         """ Set to mode "sine". """
 
-        # Screen 6
-        d = int(6).to_bytes(4, self._END)
+        d = int(6).to_bytes(4, self._END) # Screen 6
         self._switch(d)
 
-    # Screen 7 is Strobo, which is disabled because it seems to do harm to
+    # Screen 7 is Strobo, which is disabled because it is said to do harm to
     # the Kitchenlight. Evil strobo.
 
     def text(self, text="Hello World", delay=250):
@@ -427,8 +428,7 @@ class Kitchenlight: # {{{1
             text = text[:255]
         d = bytearray(8 + len(text) + 1)
         v = memoryview(d)
-        # Screen 8
-        v[0:4] = int(8).to_bytes(4, self._END)
+        v[0:4] = int(8).to_bytes(4, self._END) # Screen 8
         v[4:8] = int(delay).to_bytes(4, self._END)
         v[8:8 + len(text)] = text
         v[len(d) - 1:len(d)] = bytes(1)
@@ -436,14 +436,25 @@ class Kitchenlight: # {{{1
 
     def flood(self):
         """ Set to mode "flood". """
-        # Screen 9
-        d = int(9).to_bytes(4, self._END)
+
+        d = int(9).to_bytes(4, self._END) # Screen 9
         self._switch(d)
 
     def clock(self):
         """ Set to mode "clock". """
-        # Screen 11
-        d = int(11).to_bytes(4, self._END)
+
+        d = int(11).to_bytes(4, self._END) # Screen 11
+        self._switch(d)
+
+    def life(self, generations=0, lifetime=0, rainbow=0):
+        """ Set to mode "life". """
+
+        d = bytearray(16)
+        v = memoryview(d)
+        v[0:4] = int(12).to_bytes(4, self._END) # Screen 12
+        v[4:8] = int(generations).to_bytes(4, self._END)
+        v[8:12] = int(lifetime).to_bytes(4, self._END)
+        v[12:16] = int(rainbow).to_bytes(4, self._END)
         self._switch(d)
 # }}}1
 
