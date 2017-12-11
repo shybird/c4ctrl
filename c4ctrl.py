@@ -743,7 +743,9 @@ class Wohnzimmer(C4Room): # {{{1
             ("Tür", "licht/wohnzimmer/tuer"),
             ("Mitte", "licht/wohnzimmer/mitte"),
             ("Flur", "licht/wohnzimmer/gang"),
-            ("Küche", "licht/wohnzimmer/kueche")
+            ("Küche", "licht/wohnzimmer/kueche"),
+            ("Leseleuchte", "socket/wohnzimmer/screen/a"),
+            ("Infoscreen", "socket/wohnzimmer/screen/b")
         )
     master = Dmx7("dmx/wohnzimmer/master")
     lights = (
@@ -908,10 +910,8 @@ class ColorScheme: # {{{1
 
         from random import randint, sample
 
-        channels = [15]
+        channels = [15, 0]
         channels.append(randint(0,15))
-        channels.append(randint(0,15) - channels[1])
-        if channels[2] < 0: channels[2] = 0
 
         color = ""
         for ch in sample(channels, k=3):
@@ -1326,7 +1326,7 @@ if __name__ == "__main__": # {{{1
         BINARY_CODE \ is omitted and stdin is not connected to a TTY.")
     group_sw.add_argument(
         "-W", nargs='?', dest="w_switch", const="", metavar="BINARY_CODE",
-        help="switch lights in Wohnzimmer on/off")
+        help="switch lights and sockets in Wohnzimmer on/off")
     group_sw.add_argument(
         "-P", nargs='?', dest="p_switch", const="", metavar="BINARY_CODE",
         help="switch lights in Plenarsaal on/off")
