@@ -1259,6 +1259,17 @@ class RemotePresets: # {{{1
 
         c4 = C4Interface()
         return c4.push(cmd)
+
+    def store_preset(self, name, domain="global"):
+        """Define remote preset."""
+
+        if domain not in self.map.keys():
+            print("Error: \"{}\" is not a valid domain! Valid domains are: {}"
+                .format(domain, ", ".join(self.map.keys())))
+            return False
+
+        c4 = C4Interface()
+        return c4.push(name, topic=self.map[domain]["def_topic"])
 # }}}1
 
 if __name__ == "__main__": # {{{1
@@ -1349,6 +1360,9 @@ if __name__ == "__main__": # {{{1
         "-R", "--list-remote", nargs='?', const="global", metavar="ROOM",
         help="list remote presets for ROOM. Will list global presets if ROOM \
         is omitted.")
+    group_rp.add_argument(
+        "--store-remote-preset", nargs=2, type=str, metavar=("NAME", "ROOM"),
+        help="store remote preset NAME for ROOM.")
     args = parser.parse_args()
 
     # Debug, gate, status and shutdown.
@@ -1413,6 +1427,9 @@ if __name__ == "__main__": # {{{1
         else:
             RemotePresets().apply_preset(args.remote_preset[0].strip(),
                                          args.remote_preset[1:])
+    if args.store_remote_preset:
+        RemotePresets().store_preset(args.store_remote_preset[0].strip(),
+                                     args.store_remote_preset[1].strip())
 
     # No or no useful command line options?
     if len(sys.argv) <= 1 or len(sys.argv) == 2 and args.debug:

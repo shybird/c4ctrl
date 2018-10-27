@@ -35,6 +35,37 @@ options.
 $ c4ctrl.py -h
 ```
 
+#### Usage example: switching lights
+The best way to get used to the light switch control syntax is by giving either
+the *-W*, *-P*, *-F* or *-K* flag without argument. This will display what bit
+corresponds to which light. The string of 0s and 1s shows the current state of
+every light in the room.
+```
+$ c4ctrl -W        
+```
+```
+[Wohnzimmer]
+Please enter 0 or 1 for every light:
+,- Tür
+|,- Mitte
+||,- Flur
+|||,- Küche
+1011
+```
+Example input values:
+* *0011*: sets every light to the given state
+* *3* (Decimal representation of *0011*): same as the above
+* *^2* or *^0010* (XOR operand): toggle light "Flur"
+* *|9* or *|1001* (OR operand): turn on light "Tür" and "Küche"
+* *&1* or *&0001* (AND operand): turn off every light but "Küche"
+
+These values may be given directly on the command line:
+```
+$ c4ctrl -W ^2
+```
+NOTE: Remember to escape *|* and *&* characters when giving them on the command
+line!
+
 ### Preset file location
 *c4ctrl* searches for preset files in the directory *$XDG_CONFIG_HOME/c4ctrl/*,
 defaulting to *$HOME/.config/c4ctrl/*. If you use the *-o* flag and this
