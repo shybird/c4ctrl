@@ -699,7 +699,7 @@ class C4Room: # {{{1
 
         return self.c4.push(command)
 
-    def set_colorscheme(self, colorscheme, magic):
+    def set_colorscheme(self, colorscheme):
         """ Apply colorscheme to the LED Cans in this room. """
 
         command = []
@@ -710,29 +710,16 @@ class C4Room: # {{{1
                 # <object>.payload later.
                 light.set_color(colorscheme.get_color_for(light.topic))
 
-                if magic:
-                    # Send color to ghost instead of the "real" light.
-                    # Generate the ghost topic for topic.
-                    ghost = "ghosts" + light.topic[light.topic.find('/'):]
-
-                    command.append({
-                        "topic" : ghost,
-                        "payload" : light.payload
-                    })
-                else:
-                    # Send data to the real lanterns, not fluffyd.
-                    command.append({
-                        "topic" : light.topic,
-                        "payload" : light.payload
-                    })
+                # Send data to lanterns.
+                command.append({
+                    "topic" : light.topic,
+                    "payload" : light.payload
+                })
 
         # Nothing to do. May happen if a preset defines no color for a room.
         if command == []: return
 
-        if magic: # Do not retain "magic" messages.
-          return self.c4.push(command, retain=False)
-        else:
-          return self.c4.push(command)
+        return self.c4.push(command)
 # }}}1
 
 class Wohnzimmer(C4Room): # {{{1
@@ -1260,7 +1247,7 @@ class RemotePresets: # {{{1
         c4 = C4Interface()
         return c4.push(cmd)
 
-    def store_preset(self, name, domain="global"):
+    def define_preset(self, name, domain="global"):
         """Define remote preset."""
 
         if domain not in self.map.keys():
@@ -1318,9 +1305,6 @@ if __name__ == "__main__": # {{{1
         "-f", "--fnordcenter", type=str, dest="f_color", metavar="PRESET",
         help="apply local colorscheme PRESET to Fnordcenter")
     group_cl.add_argument(
-        "-m", "--magic", action="store_true",
-        help="EXPERIMENTAL: use fluffyd to change colors")
-    group_cl.add_argument(
         "-l", "--list-presets", action="store_true",
         help="list locally available presets")
     group_cl.add_argument(
@@ -1361,8 +1345,8 @@ if __name__ == "__main__": # {{{1
         help="list remote presets for ROOM. Will list global presets if ROOM \
         is omitted.")
     group_rp.add_argument(
-        "--store-remote-preset", nargs=2, type=str, metavar=("NAME", "ROOM"),
-        help="store remote preset NAME for ROOM.")
+        "--define-remote-preset", nargs=2, type=str, metavar=("NAME", "ROOM"),
+        help="define remote preset NAME for ROOM.")
     args = parser.parse_args()
 
     # Debug, gate, status and shutdown.
@@ -1396,15 +1380,15 @@ if __name__ == "__main__": # {{{1
     if args.w_color:
         if args.w_color not in presets:
             presets[args.w_color] = ColorScheme(args.w_color)
-        Wohnzimmer().set_colorscheme(presets[args.w_color], args.magic)
+        Wohnzimmer().set_colorscheme(presets[args.w_color])
     if args.p_color:
         if args.p_color not in presets:
             presets[args.p_color] = ColorScheme(args.p_color)
-        Plenarsaal().set_colorscheme(presets[args.p_color], args.magic)
+        Plenarsaal().set_colorscheme(presets[args.p_color])
     if args.f_color:
         if args.f_color not in presets:
             presets[args.f_color] = ColorScheme(args.f_color)
-        Fnordcenter().set_colorscheme(presets[args.f_color], args.magic)
+        Fnordcenter().set_colorscheme(presets[args.f_color])
     if args.list_presets:
         ColorScheme().list_available()
 
@@ -1427,9 +1411,9 @@ if __name__ == "__main__": # {{{1
         else:
             RemotePresets().apply_preset(args.remote_preset[0].strip(),
                                          args.remote_preset[1:])
-    if args.store_remote_preset:
-        RemotePresets().store_preset(args.store_remote_preset[0].strip(),
-                                     args.store_remote_preset[1].strip())
+    if args.define_remote_preset:
+        RemotePresets().define_preset(args.define_remote_preset[0].strip(),
+                                     args.define_remote_preset[1].strip())
 
     # No or no useful command line options?
     if len(sys.argv) <= 1 or len(sys.argv) == 2 and args.debug:
