@@ -185,6 +185,14 @@ class C4Interface: # {{{1
         else:
             return "closed"
 
+    def cyberalert(self, alert):
+        """ Start/stop cyberalert. """
+
+        if alert == 0:
+            self.push(b'\x00', "club/cyber/alert", retain=False)
+        elif alert == 1:
+            self.push(b'\x01', "club/cyber/alert", retain=False)
+
     def open_gate(self):
         """ Open the gate. """
 
@@ -1280,6 +1288,9 @@ if __name__ == "__main__": # {{{1
     group_fn.add_argument(
         "-S", "--shutdown", action="count",
         help="shutdown (give twice to force shutdown)")
+    group_fn.add_argument(
+        "--cyberalert", nargs=1, type=int, metavar="0|1",
+        help="start/stop cyberalert")
 
     # Kitchenlight control
     group_kl = parser.add_argument_group(title="Kitchenlight control")
@@ -1362,6 +1373,8 @@ if __name__ == "__main__": # {{{1
             C4Interface().shutdown(force=True)
         else:
             C4Interface().shutdown()
+    if args.cyberalert:
+        C4Interface().cyberalert(args.cyberalert[0])
 
     # Kitchenlight
     if args.list_kl_modes:
