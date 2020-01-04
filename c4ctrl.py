@@ -740,7 +740,8 @@ class Wohnzimmer(C4Room): # {{{1
             ("Flur", "licht/wohnzimmer/gang"),
             ("Küche", "licht/wohnzimmer/kueche"),
             ("Leseleuchte", "socket/wohnzimmer/screen/a"),
-            ("Infoscreen", "screen/wohnzimmer/infoscreen")
+            ("Infoscreen", "screen/wohnzimmer/infoscreen"),
+            ("Verstärker", "socket/wohnzimmer/screen/b")
         )
     master = Dmx7("dmx/wohnzimmer/master")
     lights = (
@@ -753,7 +754,9 @@ class Wohnzimmer(C4Room): # {{{1
             Dmx7("dmx/wohnzimmer/mitte3"),
             Dmx7("dmx/wohnzimmer/gang"),
             Dmx7("dmx/wohnzimmer/baellebad"),
-            Dmx("led/kitchen/sink")
+            Dmx7("dmx/wohnzimmer/spuele"),
+            Dmx7("dmx/wohnzimmer/tresen"),
+            Dmx7("dmx/wohnzimmer/chaosknoten")
         )
 # }}}1
 
