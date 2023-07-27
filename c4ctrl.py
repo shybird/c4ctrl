@@ -754,8 +754,10 @@ class Wohnzimmer(C4Room): # {{{1
             Dmx7("dmx/wohnzimmer/mitte3"),
             Dmx7("dmx/wohnzimmer/gang"),
             Dmx7("dmx/wohnzimmer/baellebad"),
-            Dmx7("dmx/wohnzimmer/spuele"),
+            Dmx7("dmx/wohnzimmer/spuele1"),
+            Dmx7("dmx/wohnzimmer/spuele2"),
             Dmx7("dmx/wohnzimmer/tresen"),
+            Dmx7("dmx/wohnzimmer/tresen2"),
             Dmx7("dmx/wohnzimmer/chaosknoten")
         )
 # }}}1
